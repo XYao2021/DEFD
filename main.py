@@ -20,6 +20,8 @@ if device != 'cpu':
     current_device = torch.cuda.current_device()
     torch.cuda.set_device(current_device)
 
+device = 'cuda'
+
 if __name__ == '__main__':
     ACC = []
     LOSS = []
@@ -96,14 +98,14 @@ if __name__ == '__main__':
                     client_compressor.append(Lyapunov_compression_Q(node=n, avg_comm_cost=average_comm_cost, V=V, W=W, max_value=max_value, min_value=min_value))
                     client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
                 else:
-                    client_compressor.append(Quantization(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value))
+                    client_compressor.append(Quantization(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
 
             elif COMPRESSION == 'topk':
                 if CONTROL is True:
                     client_compressor.append(Lyapunov_compression_T(node=n, avg_comm_cost=average_comm_cost, V=V, W=W))
                     client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
                 else:
-                    client_compressor.append(Top_k(ratio=RATIO))
+                    client_compressor.append(Top_k(ratio=RATIO, device=device))
             else:
                 raise Exception('Unknown compression method, please write the compression method first')
 

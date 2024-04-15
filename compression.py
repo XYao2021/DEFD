@@ -370,9 +370,10 @@ class Fixed_Compression(Compression):
         return bt_sorted_indices[:trans_bits], bt_sorted_indices[trans_bits:], trans_bits
 
 class Top_k(abc.ABC):
-    def __init__(self, ratio=1.0):
+    def __init__(self, ratio=1.0, device=None):
         super().__init__()
         self.ratio = ratio
+        self.device = device
 
     def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
         discount_parameter = DISCOUNT
@@ -394,7 +395,8 @@ class Top_k(abc.ABC):
         return w_tmp, w_tmp_residual
 
 class Quantization(abc.ABC):
-    def __init__(self, num_bits=8, max_value=0, min_value=0):
+    def __init__(self, num_bits=8, max_value=0, min_value=0, device=None):
+        self.device = device
         self.num_bits = num_bits
         self.scale = 2**self.num_bits - 1
         self.max_value = max_value
@@ -412,9 +414,10 @@ class Quantization(abc.ABC):
         while len(quantization) < 2 ** self.num_bits:
             value = value + step
             quantization.append(value)
-        self.quantization = torch.tensor(quantization)
+        self.quantization = torch.tensor(quantization).to(device)
 
     def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
+
         if w_tmp is None:
             w_tmp = w_residual  # w_residual is e_t
         else:
