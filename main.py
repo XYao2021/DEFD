@@ -1,3 +1,4 @@
+import matplotlib.pyplot as plt
 import torch
 import random
 import copy
@@ -20,7 +21,7 @@ if device != 'cpu':
     current_device = torch.cuda.current_device()
     torch.cuda.set_device(current_device)
 
-device = 'cuda'
+# device = 'cuda:{}'.format(CUDA_ID)
 
 if __name__ == '__main__':
     ACC = []
@@ -135,8 +136,8 @@ if __name__ == '__main__':
                 Algorithm.EFD_dc(iter_num=iter_num)
             elif ALGORITHM == 'CHOCO':
                 Algorithm.CHOCO(iter_num=iter_num, consensus=CONSENSUS_STEP)
-            elif ALGORITHM == 'CHOCOe':
-                Algorithm.CHOCO_E(iter_num=iter_num, consensus=CONSENSUS_STEP)
+            # elif ALGORITHM == 'CHOCOe':
+            #     Algorithm.CHOCO_E(iter_num=iter_num, consensus=CONSENSUS_STEP)
             elif ALGORITHM == 'DCD':
                 Algorithm.DCD(iter_num=iter_num)
             elif ALGORITHM == 'ECD':
@@ -164,12 +165,17 @@ if __name__ == '__main__':
         del client_weights
 
         torch.cuda.empty_cache()  # Clean the memory cache
+
+    # plt.plot(range(len(Algorithm.Alpha)), Algorithm.Alpha, label='{}'.format(DISCOUNT))
+    # plt.legend()
+    # plt.show()
+
     if STORE == 1:
-        txt_list = [ACC, '\n', LOSS]
-        # txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
+        # txt_list = [ACC, '\n', LOSS]
+        txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
         # txt_list = [ACC, '\n', LOSS, '\n', Algorithm.changes_ratio]
         if COMPRESSION == 'quantization':
-            f = open('{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         elif COMPRESSION == 'topk':
             f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, CONTROL, DISCOUNT, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         else:
@@ -182,5 +188,5 @@ if __name__ == '__main__':
 
     # whole length of weights (top-k): 39760
 
-    for repeat_time in range(1):
-        os.system('say "Mission Complete."')
+    # for repeat_time in range(1):
+    #     os.system('say "Mission Complete."')

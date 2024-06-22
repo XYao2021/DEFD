@@ -417,11 +417,11 @@ class Quantization(abc.ABC):
         self.quantization = torch.tensor(quantization).to(device)
 
     def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
-
+        discount_parameter = DISCOUNT
         if w_tmp is None:
-            w_tmp = w_residual  # w_residual is e_t
+            w_tmp = discount_parameter * w_residual  # w_residual is e_t
         else:
-            w_tmp += w_residual
+            w_tmp += discount_parameter * w_residual
 
         distances = torch.cdist(torch.reshape(w_tmp, (-1, 1)), torch.reshape(self.quantization, (-1, 1)))
         assignments = torch.argmin(distances, dim=1)
