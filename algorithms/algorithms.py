@@ -59,6 +59,7 @@ class Algorithms:
 
             model.optimizer.zero_grad()
             pred = model.model(images)
+            # print(pred, len(pred))
             loss = model.loss_function(pred, labels)
             loss.backward()
             model.optimizer.step()
@@ -237,42 +238,42 @@ class Algorithms:
             else:
                 consensus = consensus
 
-    def CHOCO_E(self, iter_num, consensus):  # Need to be revised
-
-        Averaged_accumulate = self._averaged_choco(updates=self.neighbor_accumulates, update=self.client_accumulates)
-
-        for n in range(self.num_clients):
-            if iter_num >= 1:
-                self.client_history[n] = self.client_weights[n]
-            if self.control:
-                print(self.control)
-                qt = self.client_partition[n].get_q(iter_num)
-                if np.random.binomial(1, qt) == 1:
-                    self.client_weights[n] = self.client_tmps[n] + consensus * Averaged_accumulate[n]
-                    self.client_tmps[n] = self._training(data_loader=self.data_loaders[n],
-                                                         client_weights=self.client_weights[n], model=self.models[n])
-                else:
-                    self.client_weights[n] = self.client_tmps[n]
-                    self.client_tmps[n] = self.client_weights[n]
-            else:
-                self.client_weights[n] = self.client_tmps[n] + consensus * Averaged_accumulate[n]
-                self.client_tmps[n] = self._training(data_loader=self.data_loaders[n],
-                                                     client_weights=self.client_weights[n], model=self.models[n])
-
-            Vector_update = self.client_weights[n] - self.client_history[n]
-            Vector_update, self.client_residuals[n] = self.client_compressor[n].get_trans_bits_and_residual(w_tmp=Vector_update, iter=iter_num,
-                                                                                                            w_residual=self.client_residuals[n],
-                                                                                                            device=self.device, neighbors=self.neighbors[n])
-            self.client_accumulates[n] += Vector_update  # Vector Update is q_t
-            for m in range(self.num_clients):
-                if n in self.neighbors[m]:
-                    self.neighbor_accumulates[m][self.neighbors[m].index(n)] += Vector_update
-
-            if iter_num % 200 == 0:
-                if consensus > 0.1:
-                    consensus -= 0.1
-                else:
-                    consensus = consensus
+    # def CHOCO_E(self, iter_num, consensus):  # Need to be revised
+    #
+    #     Averaged_accumulate = self._averaged_choco(updates=self.neighbor_accumulates, update=self.client_accumulates)
+    #
+    #     for n in range(self.num_clients):
+    #         if iter_num >= 1:
+    #             self.client_history[n] = self.client_weights[n]
+    #         if self.control:
+    #             print(self.control)
+    #             qt = self.client_partition[n].get_q(iter_num)
+    #             if np.random.binomial(1, qt) == 1:
+    #                 self.client_weights[n] = self.client_tmps[n] + consensus * Averaged_accumulate[n]
+    #                 self.client_tmps[n] = self._training(data_loader=self.data_loaders[n],
+    #                                                      client_weights=self.client_weights[n], model=self.models[n])
+    #             else:
+    #                 self.client_weights[n] = self.client_tmps[n]
+    #                 self.client_tmps[n] = self.client_weights[n]
+    #         else:
+    #             self.client_weights[n] = self.client_tmps[n] + consensus * Averaged_accumulate[n]
+    #             self.client_tmps[n] = self._training(data_loader=self.data_loaders[n],
+    #                                                  client_weights=self.client_weights[n], model=self.models[n])
+    #
+    #         Vector_update = self.client_weights[n] - self.client_history[n]
+    #         Vector_update, self.client_residuals[n] = self.client_compressor[n].get_trans_bits_and_residual(w_tmp=Vector_update, iter=iter_num,
+    #                                                                                                         w_residual=self.client_residuals[n],
+    #                                                                                                         device=self.device, neighbors=self.neighbors[n])
+    #         self.client_accumulates[n] += Vector_update  # Vector Update is q_t
+    #         for m in range(self.num_clients):
+    #             if n in self.neighbors[m]:
+    #                 self.neighbor_accumulates[m][self.neighbors[m].index(n)] += Vector_update
+    #
+    #         if iter_num % 200 == 0:
+    #             if consensus > 0.1:
+    #                 consensus -= 0.1
+    #             else:
+    #                 consensus = consensus
 
     def DCD(self, iter_num):
         Averaged_weights = self._average_updates(updates=self.neighbor_models)
