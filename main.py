@@ -28,6 +28,7 @@ if __name__ == '__main__':
     LOSS = []
     COMM = []
     ALPHAS = []
+    MAXES = []
 
     for seed in Seed_set:
         random.seed(seed)
@@ -160,6 +161,7 @@ if __name__ == '__main__':
                 ACC += Test_acc
                 LOSS += global_loss
                 ALPHAS += Algorithm.Alpha
+                MAXES += Algorithm.max
                 break
         del Models
         del client_weights

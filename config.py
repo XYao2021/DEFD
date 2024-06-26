@@ -32,18 +32,21 @@ parse.add_argument('-dist', type=str, default='Dirichlet', help='Data Distributi
 parse.add_argument('-alpha', type=float, default=0.0, help='Alpha value for Dirichlet Distribution')
 
 parse.add_argument('-consensus', type=float, default=0.05, help='Consensus step for CHOCO')
-parse.add_argument('-dp', type=float, default=1.0, help='Discount parameter of residual error for biased estimator')
+parse.add_argument('-dc', type=float, default=1.0, help='Discount parameter of residual error for biased estimator')
 
 parse.add_argument('-algorithm', type=str, default='EFD', help='machine learning algorithm')
 parse.add_argument('-control', type=int, default=0, help='Apply control algorithm or not, 0 is not, 1 is true')
 parse.add_argument('-compression', type=str, default='quantization', help='compression method')
 parse.add_argument('-network', type=str, default='random', help='Network Topology')
+
 parse.add_argument('-store', type=int, default=1, help='Store the results or not (1 or 0)')
+parse.add_argument('-id', type=int, default=1, help='cuda id (0, 1, 2, 3)')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args = parse.parse_args()
 print(', '.join(f'{k}={v}' for k, v in vars(args).items()))
 
+CUDA_ID = args.id
 average_comm_cost = args.avg_comm
 average_comp_cost = args.avg_comp
 V = args.V  # Lyapunov V value
@@ -93,7 +96,7 @@ DISTRIBUTION = args.dist
 ALGORITHM = args.algorithm
 COMPRESSION = args.compression
 NETWORK = args.network
-DISCOUNT = args.dp
+DISCOUNT = args.dc
 STORE = args.store
 
 if args.control == 0:
