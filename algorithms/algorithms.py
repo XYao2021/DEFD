@@ -40,6 +40,8 @@ class Algorithms:
         self.compression_method = compression_method
         self.changes_ratio = []
 
+        self.max = []
+
         self.logger()
 
     def logger(self):
@@ -157,6 +159,7 @@ class Algorithms:
         # Averaged_weights = self._average_updates_EFD(updates=self.neighbor_models, update=self.client_weights)  # X_t(W-I)
         Averaged_weights = self._average_updates(updates=self.neighbor_models)
         alpha = []
+        maxes = []
         for n in range(self.num_clients):
             if self.control:
                 qt = self.client_partition[n].get_q(iter_num)
@@ -176,6 +179,7 @@ class Algorithms:
             Vector_update -= self.client_weights[n]  # Difference between averaged weights and local weights
 
             bt_norm = torch.sum(torch.square(Vector_update + self.client_residuals[n])).item()
+            maxes.append(max(bt_norm))
 
             Vector_update, self.client_residuals[n] = self.client_compressor[n].get_trans_bits_and_residual(iter=iter_num, w_tmp=Vector_update, w_residual=self.client_residuals[n], device=self.device, neighbors=self.neighbors[n])
 
@@ -187,6 +191,8 @@ class Algorithms:
             for m in range(self.num_clients):
                 if n in self.neighbors[m]:
                     self.neighbor_models[m][self.neighbors[m].index(n)] += Vector_update
+
+        self.max.append(sum(maxes)/len(maxes))
 
         # if self._check_weights(self.client_weights, self.neighbor_models):
         #     print(iter_num, 'ALGORITHM SUCCESS THIS ROUND')
