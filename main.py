@@ -173,8 +173,8 @@ if __name__ == '__main__':
     # plt.show()
 
     if STORE == 1:
-        # txt_list = [ACC, '\n', LOSS]
-        txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
+        txt_list = [ACC, '\n', LOSS, '\n', MAXES]
+        # txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
         # txt_list = [ACC, '\n', LOSS, '\n', Algorithm.changes_ratio]
         if COMPRESSION == 'quantization':
             f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
