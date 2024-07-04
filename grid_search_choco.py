@@ -31,7 +31,8 @@ if __name__ == '__main__':
     MAXES = []
     Learning_rates = [10 ** i for i in np.arange(-3, 0.1, 0.25)]
 
-    Gamma = [10 ** i for i in np.arange(-4, 0, 0.5)]
+    # Gamma = [10 ** i for i in np.arange(-4, 0, 0.3)]
+    Gamma = [0.0001, 0.0005, 0.001, 0.005, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.45, 0.5]
     LOSS_DCs = [[] for i in range(len(Gamma))]
     possible_lr = []
     loss_gamma = []
