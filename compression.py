@@ -1,13 +1,13 @@
 import copy
+import random
 from abc import ABC
-import math
+import numpy.random
 import torch
 import numpy as np
 import abc
 from config import *
 from numpy.random import RandomState, SeedSequence
 from numpy.random import MT19937
-from sklearn.cluster import KMeans
 
 
 # def communication_cost(node, iter, full_size, trans_size):
@@ -394,7 +394,7 @@ class Top_k(abc.ABC):
         w_tmp_residual -= w_tmp
         return w_tmp, w_tmp_residual
 
-class Quantization(abc.ABC):
+class Quantization(abc.ABC):  # Biased quantization
     def __init__(self, num_bits=8, max_value=0, min_value=0, device=None):
         self.device = device
         self.num_bits = num_bits
@@ -414,7 +414,7 @@ class Quantization(abc.ABC):
         while len(quantization) < 2 ** self.num_bits:
             value = value + step
             quantization.append(value)
-        self.quantization = torch.tensor(quantization).to(device)
+        self.quantization = torch.tensor(quantization).to(self.device)
 
     def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
         discount_parameter = DISCOUNT
@@ -424,44 +424,99 @@ class Quantization(abc.ABC):
             w_tmp += discount_parameter * w_residual
 
         distances = torch.cdist(torch.reshape(w_tmp, (-1, 1)), torch.reshape(self.quantization, (-1, 1)))
+        # a = torch.argsort(distances, dim=1)
+        # print(iter, 'distance: ', distances, distances.size())
         assignments = torch.argmin(distances, dim=1)
 
         w_tmp_quantized = torch.index_select(input=torch.tensor(self.quantization), dim=0, index=assignments)
         w_residual = w_tmp - w_tmp_quantized
         return w_tmp_quantized, w_residual
 
-# class Quantization(abc.ABC):
-#     def __init__(self, num_bits=4, max_value=0, min_value=0):
-#         self.num_bits = num_bits
-#         self.scale = 2**self.num_bits - 1
-#         self.max_value = max_value
-#         self.min_value = min_value
-#         self.max = []
-#         self.min = []
-#
-#     def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, channel_quality):
-#         if w_tmp is None:
-#             w_tmp = w_residual  # w_residual is e_t
-#         else:
-#             w_tmp += w_residual
-#         max_value = torch.max(w_tmp)
-#         min_value = torch.min(w_tmp)
-#         self.max.append(max_value)
-#         self.min.append(min_value)
-#
-#         step = (max_value - min_value) / self.scale
-#
-#         centroids = []
-#         value = min_value
-#         centroids.append(value)
-#         while len(centroids) < 2 ** self.num_bits:
-#             value = value + step
-#             centroids.append(value)
-#
-#         centroids = torch.tensor(centroids).to(device)
-#         distances = torch.cdist(torch.reshape(w_tmp, (-1, 1)), torch.reshape(centroids, (-1, 1)))
-#         assignments = torch.argmin(distances, dim=1)
-#
-#         w_tmp_quantized = torch.tensor([centroids[i] for i in assignments])
-#         w_residual = w_tmp - w_tmp_quantized
-#         return w_tmp_quantized, w_residual
+class Quantization_U(abc.ABC):  # Unbiased quantization
+    def __init__(self, num_bits=8, max_value=0, min_value=0, device=None):
+        self.device = device
+        self.num_bits = num_bits
+        self.scale = 2**self.num_bits - 1
+        self.max_value = max_value
+        self.min_value = min_value
+        if self.max_value == self.min_value == 0:
+            raise Exception('Please set the max and min value for quantization')
+        self._initialization()
+
+    def _initialization(self):
+        step = (self.max_value - self.min_value) / self.scale
+
+        quantization = []
+        value = self.min_value
+        quantization.append(value)
+        while len(quantization) < 2 ** self.num_bits:
+            value = value + step
+            quantization.append(value)
+        self.quantization = torch.tensor(quantization).to(self.device)
+
+    def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
+        discount_parameter = DISCOUNT
+        if w_tmp is None:
+            w_tmp = discount_parameter * w_residual  # w_residual is e_t
+        else:
+            w_tmp += discount_parameter * w_residual
+
+        distances = torch.cdist(torch.reshape(w_tmp, (-1, 1)), torch.reshape(self.quantization, (-1, 1)))
+
+        sorted_distance_value = torch.sort(distances, dim=1).values
+        sorted_distances_index = torch.argsort(distances, dim=1)
+
+        first_choice_value = torch.flatten(sorted_distance_value[:, :1]).tolist()
+
+        first_choice_index = torch.flatten(sorted_distances_index[:, :1])
+        second_choice_index = torch.flatten(sorted_distances_index[:, 1:2])
+
+        sorted_distance_value = sorted_distance_value[:, :2]
+        summation = torch.sum(sorted_distance_value, dim=1).tolist()
+        random_choice = np.random.uniform(high=np.array(summation))
+
+        decision = random_choice > np.array(first_choice_value)
+
+        assignments = copy.deepcopy(second_choice_index)
+        indexes = torch.tensor(np.where(decision)[0])
+        assignments[indexes] = first_choice_index[indexes]
+
+        w_tmp_quantized = torch.index_select(input=torch.tensor(self.quantization), dim=0, index=assignments)
+        w_residual = w_tmp - w_tmp_quantized
+        return w_tmp_quantized, w_residual
+
+class Quantization_I(abc.ABC):
+    def __init__(self, num_bits=4, max_value=0, min_value=0):
+        self.num_bits = num_bits
+        self.scale = 2**self.num_bits - 1
+        self.max_value = max_value
+        self.min_value = min_value
+        self.max = []
+        self.min = []
+
+    def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
+        if w_tmp is None:
+            w_tmp = w_residual  # w_residual is e_t
+        else:
+            w_tmp += w_residual
+        max_value = torch.max(w_tmp)
+        min_value = torch.min(w_tmp)
+        self.max.append(max_value)
+        self.min.append(min_value)
+
+        step = (max_value - min_value) / self.scale
+
+        centroids = []
+        value = min_value
+        centroids.append(value)
+        while len(centroids) < 2 ** self.num_bits:
+            value = value + step
+            centroids.append(value)
+
+        centroids = torch.tensor(centroids).to(device)
+        distances = torch.cdist(torch.reshape(w_tmp, (-1, 1)), torch.reshape(centroids, (-1, 1)))
+        assignments = torch.argmin(distances, dim=1)
+
+        w_tmp_quantized = torch.tensor([centroids[i] for i in assignments])
+        w_residual = w_tmp - w_tmp_quantized
+        return w_tmp_quantized, w_residual
