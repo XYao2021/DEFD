@@ -41,6 +41,7 @@ parse.add_argument('-network', type=str, default='random', help='Network Topolog
 
 parse.add_argument('-store', type=int, default=1, help='Store the results or not (1 or 0)')
 parse.add_argument('-id', type=int, default=1, help='cuda id (0, 1, 2, 3)')
+parse.add_argument('-first_time', type=bool, default=False, help='Is this the first time run the quantization method')
 
 device = 'cuda' if torch.cuda.is_available() else 'cpu'
 args = parse.parse_args()
@@ -51,7 +52,7 @@ average_comm_cost = args.avg_comm
 average_comp_cost = args.avg_comp
 V = args.V  # Lyapunov V value
 W = args.W  # Lyapunov initial queue length W
-LEARNING_RATE = args.lr
+# LEARNING_RATE = args.lr
 
 RATIO = args.ratio
 CONSENSUS_STEP = args.consensus
@@ -98,6 +99,7 @@ COMPRESSION = args.compression
 NETWORK = args.network
 DISCOUNT = args.dc
 STORE = args.store
+FIRST = args.first_time
 
 if args.control == 0:
     CONTROL = False
@@ -106,3 +108,21 @@ elif args.control == 1:
 else:
     raise Exception('Unknown control parameter')
 
+LEARNING_RATE = args.lr
+
+Learning_rate_FMIST_book = {0.1: {0: 0.1, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.1, 0.5: 0.1,
+                            0.6: 0.1, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+                      0.2: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
+                            0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+                      4: {0: 0.032, 0.1: 0.032, 0.2: 0.018, 0.3: 0.032, 0.4: 0.032, 0.5: 0.178,
+                            0.6: 0.056, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+                      8: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
+                            0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056}}
+
+# if dataset == 'FashionMNIST':
+#     if COMPRESSION == 'topk':
+#         LEARNING_RATE = Learning_rate_FMIST_book[RATIO][DISCOUNT]
+#     elif COMPRESSION == 'quantization':
+#         LEARNING_RATE = Learning_rate_FMIST_book[QUANTIZE_LEVEL][DISCOUNT]
+
+# print('LEARNING_RATE: ', LEARNING_RATE)

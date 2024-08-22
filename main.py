@@ -100,7 +100,10 @@ if __name__ == '__main__':
                     client_compressor.append(Lyapunov_compression_Q(node=n, avg_comm_cost=average_comm_cost, V=V, W=W, max_value=max_value, min_value=min_value))
                     client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
                 else:
-                    client_compressor.append(Quantization(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
+                    if FIRST is True:
+                        client_compressor.append(Quantization_I(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
+                    else:
+                        client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
 
             elif COMPRESSION == 'topk':
                 if CONTROL is True:
@@ -134,19 +137,26 @@ if __name__ == '__main__':
             if ALGORITHM == 'EFD':
                 Algorithm.EFD(iter_num=iter_num)
             elif ALGORITHM == 'EFDwd':
-                Algorithm.EFD_dc(iter_num=iter_num)
+                Algorithm.EFD_dc(iter_num=iter_num)  # Main algorithm
             elif ALGORITHM == 'CHOCO':
                 Algorithm.CHOCO(iter_num=iter_num, consensus=CONSENSUS_STEP)
-            # elif ALGORITHM == 'CHOCOe':
-            #     Algorithm.CHOCO_E(iter_num=iter_num, consensus=CONSENSUS_STEP)
-            elif ALGORITHM == 'DCD':
+            elif ALGORITHM == 'EFDwd' and DISCOUNT == 0.0:
                 Algorithm.DCD(iter_num=iter_num)
-            elif ALGORITHM == 'ECD':
-                Algorithm.ECD(iter_num=iter_num+1)
+            # elif ALGORITHM == 'DCD':
+            #     Algorithm.DCD(iter_num=iter_num)
+            # elif ALGORITHM == 'ECD':
+            #     Algorithm.ECD(iter_num=iter_num+1)
             else:
                 raise Exception('Unknown algorithm, please update the algorithm codes')
 
             iter_num += 1
+            # if iter_num == 150:
+            #     for i in range(CLIENTS):
+            #         Models[i].learning_rate /= 2
+            #     print(Models[0].learning_rate)
+            # if DISCOUNT == 0.0:
+            #     for i in range(CLIENTS):
+            #         Models[i].learning_rate = 1 / (4*iter_num)
 
             test_weights = average_weights([Algorithm.models[i].get_weights() for i in range(CLIENTS)])
             train_loss, train_acc = test_model.accuracy(weights=test_weights, test_loader=train_loader, device=device)
@@ -160,8 +170,8 @@ if __name__ == '__main__':
             if iter_num >= AGGREGATION:
                 ACC += Test_acc
                 LOSS += global_loss
-                ALPHAS += Algorithm.Alpha
-                MAXES += Algorithm.max
+                # ALPHAS += Algorithm.Alpha
+                # MAXES += Algorithm.max
                 break
         del Models
         del client_weights
@@ -173,13 +183,20 @@ if __name__ == '__main__':
     # plt.show()
 
     if STORE == 1:
-        txt_list = [ACC, '\n', LOSS, '\n', MAXES]
-        # txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
-        # txt_list = [ACC, '\n', LOSS, '\n', Algorithm.changes_ratio]
+        if FIRST is True:
+            Maxes = []
+            Mines = []
+            for i in range(CLIENTS):
+                Maxes.append(max(client_compressor[i].max))
+                Mines.append(min(client_compressor[i].min))
+            txt_list = [Maxes, '\n', Mines, '\n', ACC, '\n', LOSS]
+        else:
+            txt_list = [ACC, '\n', LOSS]
+
         if COMPRESSION == 'quantization':
             f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         elif COMPRESSION == 'topk':
-            f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, CONTROL, DISCOUNT, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         else:
             raise Exception('Unknown compression method')
 
