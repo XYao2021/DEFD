@@ -63,17 +63,23 @@ if __name__ == '__main__':
         neighbor_updates = []
 
         if ALGORITHM == 'EFD' or 'EFDwd':
-            max_value = 0.2782602
-            min_value = -0.2472423
-        elif ALGORITHM == 'CHOCO' or 'CHOCOe':
+            # max_value = 0.2782602
+            # min_value = -0.2472423
+            max_value = 0.5642
+            min_value = -0.5123
+        elif ALGORITHM == 'CHOCO':
+            # max_value = 0.30123514
+            # min_value = -0.21583036
             max_value = 0.30123514
             min_value = -0.21583036
         elif ALGORITHM == 'DCD':
-            max_value = 0.35543507
-            min_value = -0.30671167
-        elif ALGORITHM == 'ECD':
-            max_value = 66.03526
-            min_value = -57.940025
+            # max_value = 0.35543507
+            # min_value = -0.30671167
+            max_value = 0.2208
+            min_value = -0.1937
+        # elif ALGORITHM == 'ECD':
+        #     max_value = 66.03526
+        #     min_value = -57.940025
 
         Transfer = Transform(num_nodes=CLIENTS, num_neighbors=NEIGHBORS, seed=seed, network=NETWORK)
         check = Check_Matrix(CLIENTS, Transfer.matrix)
@@ -150,13 +156,6 @@ if __name__ == '__main__':
                 raise Exception('Unknown algorithm, please update the algorithm codes')
 
             iter_num += 1
-            # if iter_num == 150:
-            #     for i in range(CLIENTS):
-            #         Models[i].learning_rate /= 2
-            #     print(Models[0].learning_rate)
-            # if DISCOUNT == 0.0:
-            #     for i in range(CLIENTS):
-            #         Models[i].learning_rate = 1 / (4*iter_num)
 
             test_weights = average_weights([Algorithm.models[i].get_weights() for i in range(CLIENTS)])
             train_loss, train_acc = test_model.accuracy(weights=test_weights, test_loader=train_loader, device=device)
@@ -194,9 +193,9 @@ if __name__ == '__main__':
             txt_list = [ACC, '\n', LOSS]
 
         if COMPRESSION == 'quantization':
-            f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, dataset, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         elif COMPRESSION == 'topk':
-            f = open('{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, CONTROL, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, CONTROL, dataset, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         else:
             raise Exception('Unknown compression method')
 

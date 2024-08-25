@@ -485,8 +485,8 @@ class Quantization_U(abc.ABC):  # Unbiased quantization
         w_residual = w_tmp - w_tmp_quantized
         return w_tmp_quantized, w_residual
 
-class Quantization_I(abc.ABC):
-    def __init__(self, num_bits=4, max_value=0, min_value=0):
+class Quantization_I(abc.ABC):  # Initialize setup for max and min value
+    def __init__(self, num_bits=4, max_value=0, min_value=0, device=None):
         self.num_bits = num_bits
         self.scale = 2**self.num_bits - 1
         self.max_value = max_value
