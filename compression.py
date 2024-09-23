@@ -433,12 +433,13 @@ class Quantization(abc.ABC):  # Biased quantization
         return w_tmp_quantized, w_residual
 
 class Quantization_U(abc.ABC):  # Unbiased quantization
-    def __init__(self, num_bits=8, max_value=0, min_value=0, device=None):
+    def __init__(self, num_bits=8, max_value=0, min_value=0, discount=0.0, device=None):
         self.device = device
         self.num_bits = num_bits
         self.scale = 2**self.num_bits - 1
         self.max_value = max_value
         self.min_value = min_value
+        self.discount_factor = discount
         if self.max_value == self.min_value == 0:
             raise Exception('Please set the max and min value for quantization')
         self._initialization()
@@ -455,11 +456,11 @@ class Quantization_U(abc.ABC):  # Unbiased quantization
         self.quantization = torch.tensor(quantization).to(self.device)
 
     def get_trans_bits_and_residual(self, iter, w_tmp, w_residual, device, neighbors):
-        discount_parameter = DISCOUNT
+        # print(self.discount_factor)
         if w_tmp is None:
-            w_tmp = discount_parameter * w_residual  # w_residual is e_t
+            w_tmp = self.discount_factor * w_residual  # w_residual is e_t
         else:
-            w_tmp += discount_parameter * w_residual
+            w_tmp += self.discount_factor * w_residual
 
         distances = torch.cdist(torch.reshape(w_tmp, (-1, 1)), torch.reshape(self.quantization, (-1, 1)))
 

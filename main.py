@@ -61,25 +61,34 @@ if __name__ == '__main__':
         neighbors_accumulates = []
         neighbors_estimates = []
         neighbor_updates = []
+        estimate_gossip_error = []
+        current_weights = []
+        m_hat = []
 
-        if ALGORITHM == 'EFD' or 'EFDwd':
-            # max_value = 0.2782602
-            # min_value = -0.2472423
+        if ALGORITHM == 'EFD':
+            # if DISCOUNT == 0:
+            #     max_value = 0.35543507
+            #     min_value = -0.30671167
+            # #     max_value = 0.2208
+            # #     min_value = -0.1937
+            # else:
+            #     # max_value = 0.2782602
+            #     # min_value = -0.2472423
+            #     max_value = 0.5642
+            #     min_value = -0.5123
             max_value = 0.5642
             min_value = -0.5123
         elif ALGORITHM == 'CHOCO':
-            # max_value = 0.30123514
-            # min_value = -0.21583036
             max_value = 0.30123514
             min_value = -0.21583036
-        elif ALGORITHM == 'DCD':
-            # max_value = 0.35543507
-            # min_value = -0.30671167
-            max_value = 0.2208
-            min_value = -0.1937
-        # elif ALGORITHM == 'ECD':
-        #     max_value = 66.03526
-        #     min_value = -57.940025
+        elif ALGORITHM == 'AdaG':
+            max_value = 0.30123514
+            min_value = -0.21583036
+        elif ALGORITHM == 'QSADDLe':
+            max_value = 0.30123514
+            min_value = -0.21583036
+
+        print(min_value, max_value)
 
         Transfer = Transform(num_nodes=CLIENTS, num_neighbors=NEIGHBORS, seed=seed, network=NETWORK)
         check = Check_Matrix(CLIENTS, Transfer.matrix)
@@ -109,7 +118,7 @@ if __name__ == '__main__':
                     if FIRST is True:
                         client_compressor.append(Quantization_I(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
                     else:
-                        client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
+                        client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))
 
             elif COMPRESSION == 'topk':
                 if CONTROL is True:
@@ -120,12 +129,21 @@ if __name__ == '__main__':
             else:
                 raise Exception('Unknown compression method, please write the compression method first')
 
-            if ALGORITHM == 'CHOCO' or 'CHOCOe':
+            if ALGORITHM == 'CHOCO':
                 client_tmps.append(model.get_weights().to(device))
                 client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
                 neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
-            if ALGORITHM == 'ECD':
-                neighbors_estimates.append([model.get_weights() for i in range(len(Transfer.neighbors[n]))])
+            if ALGORITHM == 'AdaG':
+                client_tmps.append(model.get_weights().to(device))
+                client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+                neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+                estimate_gossip_error.append(torch.zeros_like(model.get_weights()).to(device))
+            if ALGORITHM == 'QSADDLe':
+                current_weights.append(model.get_weights().to(device))
+                client_tmps.append(model.get_weights().to(device))
+                client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+                neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+                m_hat.append(torch.zeros_like(model.get_weights()).to(device))
 
         Algorithm = Algorithms(name=ALGORITHM, iter_round=ROUND_ITER, device=device, data_transform=data_transform,
                                num_clients=CLIENTS, client_weights=client_weights, client_residuals=client_residual,
@@ -133,31 +151,46 @@ if __name__ == '__main__':
                                models=Models, data_loaders=client_train_loader, transfer=Transfer,
                                neighbor_models=neighbor_models, neighbors_accumulates=neighbors_accumulates,
                                client_tmps=client_tmps, neighbors_estimates=neighbors_estimates, client_partition=client_partition,
-                               control=CONTROL, alpha_max=alpha_max, compression_method=COMPRESSION)
+                               control=CONTROL, alpha_max=alpha_max, compression_method=COMPRESSION,
+                               estimate_gossip_error=estimate_gossip_error, current_weights=current_weights, m_hat=m_hat)
         global_loss = []
         Test_acc = []
         iter_num = 0
+        print(ALGORITHM)
 
         while True:
             # print('SEED ', '|', seed, '|', 'ITERATION ', iter_num)
-            if ALGORITHM == 'EFD':
-                Algorithm.EFD(iter_num=iter_num)
-            elif ALGORITHM == 'EFDwd':
-                Algorithm.EFD_dc(iter_num=iter_num)  # Main algorithm
+            if ALGORITHM == 'EFD':  # main algorithm
+                if DISCOUNT == 0.0:
+                    if iter_num == 0:
+                        print('0', DISCOUNT)
+                    Algorithm.DCD(iter_num=iter_num)
+                else:
+                    if iter_num == 0:
+                        print('1', DISCOUNT)
+                    Algorithm.EFD_dc(iter_num=iter_num)
             elif ALGORITHM == 'CHOCO':
+                if iter_num == 0:
+                    print('2', CONSENSUS_STEP)
                 Algorithm.CHOCO(iter_num=iter_num, consensus=CONSENSUS_STEP)
-            elif ALGORITHM == 'EFDwd' and DISCOUNT == 0.0:
-                Algorithm.DCD(iter_num=iter_num)
+            elif ALGORITHM == 'AdaG':  # beta = 0.999 consensus = 0.002 (0.1)
+                if iter_num == 0:
+                    print('3', CONSENSUS_STEP)
+                Algorithm.AdaG_SGD(iter_num=iter_num+1, beta=0.999, consensus=CONSENSUS_STEP, epsilon=1e-8)
+            elif ALGORITHM == 'QSADDLe':
+                if iter_num == 0:
+                    print('4', CONSENSUS_STEP)
+                Algorithm.Comp_QSADDLe(iter_num=iter_num, rho=0.01, beta=0.9, learning_rate=LEARNING_RATE, consensus=CONSENSUS_STEP, mu=0.9)
             # elif ALGORITHM == 'DCD':
             #     Algorithm.DCD(iter_num=iter_num)
-            # elif ALGORITHM == 'ECD':
-            #     Algorithm.ECD(iter_num=iter_num+1)
             else:
                 raise Exception('Unknown algorithm, please update the algorithm codes')
 
             iter_num += 1
-
+            # for i in range(CLIENTS):
+            #     print(iter_num, i, Algorithm.models[i].get_weights())
             test_weights = average_weights([Algorithm.models[i].get_weights() for i in range(CLIENTS)])
+            # test_weights = average_weights(weights=Algorithm.client_weights)
             train_loss, train_acc = test_model.accuracy(weights=test_weights, test_loader=train_loader, device=device)
             test_loss, test_acc = test_model.accuracy(weights=test_weights, test_loader=test_loader, device=device)
 
@@ -193,9 +226,9 @@ if __name__ == '__main__':
             txt_list = [ACC, '\n', LOSS]
 
         if COMPRESSION == 'quantization':
-            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, dataset, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, dataset, LEARNING_RATE, CONSENSUS_STEP, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         elif COMPRESSION == 'topk':
-            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, CONTROL, dataset, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, CONTROL, dataset, LEARNING_RATE, CONSENSUS_STEP, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         else:
             raise Exception('Unknown compression method')
 
