@@ -1,7 +1,7 @@
 # RED Codes
 The official Pytorch code for RED-PSGD algorithm.
 
-# pip requirements
+# Circumstances
 The required libraries can be found in "requirements.txt"
 
 # Configures
