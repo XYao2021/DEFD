@@ -7,7 +7,6 @@ from torch.utils.data import DataLoader
 from model.model import Model
 from util.util import *
 from compression import *
-from partition import *
 from config import *
 from dataset.dataset import *
 from trans_matrix import *
