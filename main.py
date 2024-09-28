@@ -66,16 +66,6 @@ if __name__ == '__main__':
         m_hat = []
 
         if ALGORITHM == 'EFD':
-            # if DISCOUNT == 0:
-            #     max_value = 0.35543507
-            #     min_value = -0.30671167
-            # #     max_value = 0.2208
-            # #     min_value = -0.1937
-            # else:
-            #     # max_value = 0.2782602
-            #     # min_value = -0.2472423
-            #     max_value = 0.5642
-            #     min_value = -0.5123
             max_value = 0.5642
             min_value = -0.5123
         elif ALGORITHM == 'CHOCO':
@@ -88,7 +78,7 @@ if __name__ == '__main__':
             max_value = 0.30123514
             min_value = -0.21583036
 
-        print(min_value, max_value)
+        # print(min_value, max_value)
 
         Transfer = Transform(num_nodes=CLIENTS, num_neighbors=NEIGHBORS, seed=seed, network=NETWORK)
         check = Check_Matrix(CLIENTS, Transfer.matrix)
@@ -161,7 +151,7 @@ if __name__ == '__main__':
         while True:
             # print('SEED ', '|', seed, '|', 'ITERATION ', iter_num)
             if ALGORITHM == 'EFD':  # main algorithm
-                if DISCOUNT == 0.0:
+                if DISCOUNT == 0.0:  # Equals to DCD
                     if iter_num == 0:
                         print('0', DISCOUNT)
                     Algorithm.DCD(iter_num=iter_num)
@@ -181,8 +171,6 @@ if __name__ == '__main__':
                 if iter_num == 0:
                     print('4', CONSENSUS_STEP)
                 Algorithm.Comp_QSADDLe(iter_num=iter_num, rho=0.01, beta=0.9, learning_rate=LEARNING_RATE, consensus=CONSENSUS_STEP, mu=0.9)
-            # elif ALGORITHM == 'DCD':
-            #     Algorithm.DCD(iter_num=iter_num)
             else:
                 raise Exception('Unknown algorithm, please update the algorithm codes')
 
@@ -202,17 +190,11 @@ if __name__ == '__main__':
             if iter_num >= AGGREGATION:
                 ACC += Test_acc
                 LOSS += global_loss
-                # ALPHAS += Algorithm.Alpha
-                # MAXES += Algorithm.max
                 break
         del Models
         del client_weights
 
         torch.cuda.empty_cache()  # Clean the memory cache
-
-    # plt.plot(range(len(Algorithm.Alpha)), Algorithm.Alpha, label='{}'.format(DISCOUNT))
-    # plt.legend()
-    # plt.show()
 
     if STORE == 1:
         if FIRST is True:
@@ -236,8 +218,3 @@ if __name__ == '__main__':
             f.write("%s\n" % item)
     else:
         print('NOT STORE THE RESULTS THIS TIME')
-
-    # whole length of weights (top-k): 39760
-
-    # for repeat_time in range(1):
-    #     os.system('say "Mission Complete."')
