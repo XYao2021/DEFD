@@ -106,13 +106,11 @@ class Algorithms:
         else:
             return False
 
-    def EFD_dc(self, iter_num):
-        # Averaged_weights = self._average_updates_EFD(updates=self.neighbor_models, update=self.client_weights)  # X_t(W-I)
+    def DEFD(self, iter_num):
         Averaged_weights = self._average_updates(updates=self.neighbor_models)
         alpha = []
         maxes = []
         for n in range(self.num_clients):
-            # print(iter_num, self.models[n].learning_rate)
             if self.control:
                 qt = self.client_partition[n].get_q(iter_num)
                 if np.random.binomial(1, qt) == 1:
