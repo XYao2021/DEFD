@@ -64,7 +64,7 @@ if __name__ == '__main__':
         current_weights = []
         m_hat = []
 
-        if ALGORITHM == 'EFD':
+        if ALGORITHM == 'DEFD':
             max_value = 0.5642
             min_value = -0.5123
         elif ALGORITHM == 'CHOCO':
@@ -100,21 +100,13 @@ if __name__ == '__main__':
             neighbor_updates.append([torch.zeros_like(model.get_weights()) for i in range(len(Transfer.neighbors[n]))])
 
             if COMPRESSION == 'quantization':
-                if CONTROL is True:
-                    client_compressor.append(Lyapunov_compression_Q(node=n, avg_comm_cost=average_comm_cost, V=V, W=W, max_value=max_value, min_value=min_value))
-                    client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
+                if FIRST is True:
+                    client_compressor.append(Quantization_I(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
                 else:
-                    if FIRST is True:
-                        client_compressor.append(Quantization_I(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
-                    else:
-                        client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))
+                    client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))
 
             elif COMPRESSION == 'topk':
-                if CONTROL is True:
-                    client_compressor.append(Lyapunov_compression_T(node=n, avg_comm_cost=average_comm_cost, V=V, W=W))
-                    client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
-                else:
-                    client_compressor.append(Top_k(ratio=RATIO, device=device))
+                client_compressor.append(Top_k(ratio=RATIO, device=device))
             else:
                 raise Exception('Unknown compression method, please write the compression method first')
 
@@ -149,7 +141,7 @@ if __name__ == '__main__':
 
         while True:
             # print('SEED ', '|', seed, '|', 'ITERATION ', iter_num)
-            if ALGORITHM == 'EFD':  # main algorithm
+            if ALGORITHM == 'DEFD':  # main algorithm
                 if DISCOUNT == 0.0:  # Equals to DCD
                     if iter_num == 0:
                         print('0', DISCOUNT)
@@ -157,7 +149,7 @@ if __name__ == '__main__':
                 else:
                     if iter_num == 0:
                         print('1', DISCOUNT)
-                    Algorithm.EFD_dc(iter_num=iter_num)
+                    Algorithm.DEFD(iter_num=iter_num)
             elif ALGORITHM == 'CHOCO':
                 if iter_num == 0:
                     print('2', CONSENSUS_STEP)
