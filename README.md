@@ -1,5 +1,5 @@
-# DEED Codes
-The official Pytorch code for DEED-SGD algorithm. These codes only use for experiments in paper "Compressed Decentralized Learning With Error Feedback Under Data Heterogeneity" for ICLR 2025.
+# DEFD Codes
+The official Pytorch code for DEFD-SGD algorithm. These codes only use for experiments in paper "Compressed Decentralized Learning With Error Feedback Under Data Heterogeneity" for ICLR 2025.
 
 # Python Libraries
 The required libraries can be found in "requirements.txt"
