@@ -31,7 +31,11 @@ if __name__ == '__main__':
     MAXES = []
 
     Learning_rates = [10 ** i for i in np.arange(-3, 0.0, 0.25)]
-    dcs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
+
+    if ADAPTIVE is True:
+        dcs = [1.0]
+    else:
+        dcs = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1.0]
     # dcs = [0.0]
 
     # Learning_rates = [0.01, 0.1]
@@ -74,15 +78,38 @@ if __name__ == '__main__':
                 neighbors_accumulates = []
                 neighbors_estimates = []
                 neighbor_updates = []
+                estimate_gossip_error = []
+                current_weights = []
+                m_hat = []
 
-                if ALGORITHM == 'EFDwd':
-                    if DISCOUNT == 0.0:
-                        max_value = 0.2208
-                        min_value = -0.1937
-                    else:
-                        max_value = 0.5642
-                        min_value = -0.5123
+                neighbor_H = []
+                neighbor_G = []
+                H = []
+                G = []
+
+                if ALGORITHM == 'EFD':
+                    #     # max_value = 0.2782602
+                    #     # min_value = -0.2472423
+                    # max_value = 0.5642
+                    # min_value = -0.5123
+                    max_value = 0.4066
+                    min_value = -0.2881
+                elif ALGORITHM == 'DCD':
+                    # max_value = 0.35543507
+                    # min_value = -0.30671167
+                    # max_value = 0.2208
+                    # min_value = -0.1937
+                    max_value = 0.4038
+                    min_value = -0.2891
                 elif ALGORITHM == 'CHOCO':
+                    max_value = 0.30123514
+                    min_value = -0.21583036
+                elif ALGORITHM == 'BEER':
+                    # max_value = 0.30123514
+                    # min_value = -0.21583036
+                    max_value = 3.6578
+                    min_value = -3.3810
+                elif ALGORITHM == 'DeCoM':
                     max_value = 0.30123514
                     min_value = -0.21583036
 
@@ -111,9 +138,15 @@ if __name__ == '__main__':
                             client_compressor.append(Lyapunov_compression_Q(node=n, avg_comm_cost=average_comm_cost, V=V, W=W, max_value=max_value, min_value=min_value))
                             client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
                         else:
-                            client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=dc))
+                            client_compressor.append(Quantization_U_1(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=dc))
+                        scale = 2 ** QUANTIZE_LEVEL - 1
+                        step = (max_value - min_value) / scale
+                        vector_length = len(client_weights[n])
+                        normalization = (step ** 2) * vector_length
+                        # normalization = step
 
                     elif COMPRESSION == 'topk':
+                        normalization = None
                         if CONTROL is True:
                             client_compressor.append(Lyapunov_compression_T(node=n, avg_comm_cost=average_comm_cost, V=V, W=W))
                             client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
@@ -129,13 +162,20 @@ if __name__ == '__main__':
                     if ALGORITHM == 'ECD':
                         neighbors_estimates.append([model.get_weights() for i in range(len(Transfer.neighbors[n]))])
 
-                Algorithm = Algorithms(name=ALGORITHM, iter_round=ROUND_ITER, device=device, data_transform=data_transform,
-                                       num_clients=CLIENTS, client_weights=client_weights, client_residuals=client_residual,
+                Algorithm = Algorithms(name=ALGORITHM, iter_round=ROUND_ITER, device=device,
+                                       data_transform=data_transform,
+                                       num_clients=CLIENTS, client_weights=client_weights,
+                                       client_residuals=client_residual,
                                        client_accumulates=client_accumulate, client_compressors=client_compressor,
                                        models=Models, data_loaders=client_train_loader, transfer=Transfer,
                                        neighbor_models=neighbor_models, neighbors_accumulates=neighbors_accumulates,
-                                       client_tmps=client_tmps, neighbors_estimates=neighbors_estimates, client_partition=client_partition,
-                                       control=CONTROL, alpha_max=alpha_max, compression_method=COMPRESSION)
+                                       client_tmps=client_tmps, neighbors_estimates=neighbors_estimates,
+                                       client_partition=client_partition,
+                                       control=CONTROL, alpha_max=alpha_max, compression_method=COMPRESSION,
+                                       estimate_gossip_error=estimate_gossip_error, current_weights=current_weights,
+                                       m_hat=m_hat,
+                                       adaptive=ADAPTIVE, threshold=THRESHOLD, H=H, neighbor_H=neighbor_H, G=G,
+                                       neighbor_G=neighbor_G)
                 global_loss = []
                 Test_acc = []
                 iter_num = 0
@@ -143,10 +183,10 @@ if __name__ == '__main__':
 
                 while True:
                     # print('SEED ', '|', seed, '|', 'ITERATION ', iter_num)
+                    # if ALGORITHM == 'EFD':
+                    #     Algorithm.EFD(iter_num=iter_num)
                     if ALGORITHM == 'EFD':
-                        Algorithm.EFD(iter_num=iter_num)
-                    elif ALGORITHM == 'EFDwd':
-                        Algorithm.EFD_dc(iter_num=iter_num)
+                        Algorithm.EFD_dc(iter_num=iter_num, normalization=normalization)
                     elif ALGORITHM == 'CHOCO':
                         Algorithm.CHOCO(iter_num=iter_num, consensus=CONSENSUS_STEP)
                     elif ALGORITHM == 'DCD':

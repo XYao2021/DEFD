@@ -7,6 +7,7 @@ from torch.utils.data import DataLoader
 from model.model import Model
 from util.util import *
 from compression import *
+from partition import *
 from config import *
 from dataset.dataset import *
 from trans_matrix import *
@@ -28,17 +29,22 @@ if __name__ == '__main__':
     COMM = []
     ALPHAS = []
     MAXES = []
-
     for seed in Seed_set:
         random.seed(seed)
         np.random.seed(seed)
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
-        train_data, test_data = loading(dataset_name=dataset, data_path=dataset_path, device=device)
-        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
-        test_loader = DataLoader(test_data, batch_size=BATCH_SIZE_TEST, shuffle=False, num_workers=0)
+        if dataset == 'CINIC10':
+            train_data, test_data = loading_CINIC(data_path=dataset_path, device=device)
+            train_loader = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
+            test_loader = torch.utils.data.DataLoader(test_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
+        elif dataset == 'FashionMNIST' or 'CIFAR10' or 'MNIST':
+            train_data, test_data = loading(dataset_name=dataset, data_path=dataset_path, device=device)
+            train_loader = DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
+            test_loader = DataLoader(test_data, batch_size=BATCH_SIZE_TEST, shuffle=False, num_workers=0)
 
+        print("......DATA LOADING COMPLETE......")
         Sample = Sampling(num_client=CLIENTS, num_class=len(train_data.classes), train_data=train_data, method='uniform', seed=seed)
         if DISTRIBUTION == 'Dirichlet':
             if ALPHA == 0:
@@ -64,18 +70,54 @@ if __name__ == '__main__':
         current_weights = []
         m_hat = []
 
-        if ALGORITHM == 'DEFD':
-            max_value = 0.5642
-            min_value = -0.5123
+        neighbor_H = []
+        neighbor_G = []
+        H = []
+        G = []
+
+        if ALGORITHM == 'EFD':
+            #     # max_value = 0.2782602
+            #     # min_value = -0.2472423
+            # max_value = 0.5642
+            # min_value = -0.5123
+            max_value = 0.4066
+            min_value = -0.2881
+        elif ALGORITHM == 'DCD':
+            # max_value = 0.35543507
+            # min_value = -0.30671167
+            # max_value = 0.2208
+            # min_value = -0.1937
+            max_value = 0.4038
+            min_value = -0.2891
         elif ALGORITHM == 'CHOCO':
             max_value = 0.30123514
             min_value = -0.21583036
-        elif ALGORITHM == 'AdaG':
-            max_value = 0.30123514
-            min_value = -0.21583036
-        elif ALGORITHM == 'QSADDLe':
-            max_value = 0.30123514
-            min_value = -0.21583036
+        elif ALGORITHM == 'BEER':
+            # max_value = 0.30123514
+            # min_value = -0.21583036
+            max_value = 3.6578
+            min_value = -3.3810
+            # max_value = 2.7954
+            # min_value = -2.9491
+        elif ALGORITHM == 'DeCoM':
+            # max_value = 4.7449
+            # min_value = -4.1620
+            max_value = 2.2271
+            min_value = -2.3342
+        elif ALGORITHM == 'CEDAS':
+            max_value = 0.0525
+            min_value = -0.0233
+        elif ALGORITHM == 'MOTEF':
+            max_value = 1.9098
+            min_value = -2.7054
+        # elif ALGORITHM == 'AdaG':
+        #     # max_value = 0.30123514
+        #     # min_value = -0.21583036
+        #     max_value = 0.5642
+        #     min_value = -0.5123
+        # elif ALGORITHM == 'QSADDLe':
+        #     max_value = 0.30123514
+        #     min_value = -0.21583036
 
         # print(min_value, max_value)
 
@@ -84,7 +126,7 @@ if __name__ == '__main__':
         if check != 0:
             raise Exception('The Transfer Matrix Should be Symmetric')
         else:
-            print('Transfer Matrix is Symmetric Matrix', '\n')
+            print(NETWORK, 'Transfer Matrix is Symmetric Matrix', '\n')
         alpha_max = Transfer.Get_alpha_upper_bound_theory()
 
         test_model = Model(random_seed=seed, learning_rate=LEARNING_RATE, model_name=model_name, device=device, flatten_weight=True, pretrained_model_file=load_model_file)
@@ -98,15 +140,32 @@ if __name__ == '__main__':
             neighbor_models.append([model.get_weights() for i in range(len(Transfer.neighbors[n]))])
 
             neighbor_updates.append([torch.zeros_like(model.get_weights()) for i in range(len(Transfer.neighbors[n]))])
-
             if COMPRESSION == 'quantization':
-                if FIRST is True:
-                    client_compressor.append(Quantization_I(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device))
+                if ALGORITHM == 'EFD':
+                    DISCOUNT = np.sqrt(QUANTIZE_LEVEL)
+                    scale = 2 ** QUANTIZE_LEVEL - 1
+                    step = (max_value - min_value) / scale
+                    vector_length = len(client_weights[n])
+                    # normalization = (step**2)*vector_length
+                    normalization = step
+                    # print(n, step, np.sqrt(step), 1/step, 1/np.sqrt(step))
+                if CONTROL is True:
+                    client_compressor.append(Lyapunov_compression_Q(node=n, avg_comm_cost=average_comm_cost, V=V, W=W, max_value=max_value, min_value=min_value))
+                    client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
                 else:
-                    client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))
-
+                    if FIRST is True:
+                        client_compressor.append(Quantization_I(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))
+                    else:
+                        client_compressor.append(Quantization_U_1(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))  # Unbiased
+                        # client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))  # Unbiased 1
+                        # client_compressor.append(Quantization(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))  # Biased
             elif COMPRESSION == 'topk':
-                client_compressor.append(Top_k(ratio=RATIO, device=device))
+                normalization = None
+                if CONTROL is True:
+                    client_compressor.append(Lyapunov_compression_T(node=n, avg_comm_cost=average_comm_cost, V=V, W=W))
+                    client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
+                else:
+                    client_compressor.append(Top_k(ratio=RATIO, device=device, discount=DISCOUNT))
             else:
                 raise Exception('Unknown compression method, please write the compression method first')
 
@@ -114,17 +173,37 @@ if __name__ == '__main__':
                 client_tmps.append(model.get_weights().to(device))
                 client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
                 neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
-            if ALGORITHM == 'AdaG':
+            if ALGORITHM == 'DeCoM':
                 client_tmps.append(model.get_weights().to(device))
                 client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
                 neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
-                estimate_gossip_error.append(torch.zeros_like(model.get_weights()).to(device))
-            if ALGORITHM == 'QSADDLe':
-                current_weights.append(model.get_weights().to(device))
+            if ALGORITHM == 'CEDAS':
                 client_tmps.append(model.get_weights().to(device))
                 client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
                 neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
-                m_hat.append(torch.zeros_like(model.get_weights()).to(device))
+            if ALGORITHM == 'MOTEF' or 'MOTEF_VR':
+                # client_tmps.append(model.get_weights().to(device))
+                neighbor_H.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+                neighbor_G.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+                H.append(torch.zeros_like(model.get_weights()).to(device))
+                G.append(torch.zeros_like(model.get_weights()).to(device))
+                client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+            # if ALGORITHM == 'AdaG':
+            #     client_tmps.append(model.get_weights().to(device))
+            #     client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+            #     neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+            #     estimate_gossip_error.append(torch.zeros_like(model.get_weights()).to(device))
+            # if ALGORITHM == 'QSADDLe':
+            #     current_weights.append(model.get_weights().to(device))
+            #     client_tmps.append(model.get_weights().to(device))
+            #     client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+            #     neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+            #     m_hat.append(torch.zeros_like(model.get_weights()).to(device))
+            if ALGORITHM == 'BEER':
+                neighbor_H.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+                neighbor_G.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+                H.append(torch.zeros_like(model.get_weights()).to(device))
+                G.append(torch.zeros_like(model.get_weights()).to(device))
 
         Algorithm = Algorithms(name=ALGORITHM, iter_round=ROUND_ITER, device=device, data_transform=data_transform,
                                num_clients=CLIENTS, client_weights=client_weights, client_residuals=client_residual,
@@ -133,35 +212,55 @@ if __name__ == '__main__':
                                neighbor_models=neighbor_models, neighbors_accumulates=neighbors_accumulates,
                                client_tmps=client_tmps, neighbors_estimates=neighbors_estimates, client_partition=client_partition,
                                control=CONTROL, alpha_max=alpha_max, compression_method=COMPRESSION,
-                               estimate_gossip_error=estimate_gossip_error, current_weights=current_weights, m_hat=m_hat)
+                               estimate_gossip_error=estimate_gossip_error, current_weights=current_weights, m_hat=m_hat,
+                               adaptive=ADAPTIVE, threshold=THRESHOLD, H=H, neighbor_H=neighbor_H, G=G, neighbor_G=neighbor_G)
         global_loss = []
         Test_acc = []
         iter_num = 0
-        print(ALGORITHM)
+        print(ALGORITHM, DISCOUNT, BETA)  # Why the ADAPTIVE always True?
 
         while True:
-            # print('SEED ', '|', seed, '|', 'ITERATION ', iter_num)
-            if ALGORITHM == 'DEFD':  # main algorithm
-                if DISCOUNT == 0.0:  # Equals to DCD
-                    if iter_num == 0:
-                        print('0', DISCOUNT)
-                    Algorithm.DCD(iter_num=iter_num)
-                else:
-                    if iter_num == 0:
-                        print('1', DISCOUNT)
-                    Algorithm.DEFD(iter_num=iter_num)
+            # print('SEED ', '|', seed, '|', 'ITERATION ', iter_num, 'gamma ', DISCOUNT)
+            if ALGORITHM == 'EFD':  # main algorithm
+                if iter_num == 0:
+                    print('Algorithm DEFD applied')
+                Algorithm.EFD_dc(iter_num=iter_num, normalization=normalization)
+            elif ALGORITHM == 'DCD':
+                if iter_num == 0:
+                    print('Algorithm DCD applied')
+                Algorithm.DCD(iter_num=iter_num)
             elif ALGORITHM == 'CHOCO':
                 if iter_num == 0:
-                    print('2', CONSENSUS_STEP)
+                    print('Algorithm CHOCO applied')
                 Algorithm.CHOCO(iter_num=iter_num, consensus=CONSENSUS_STEP)
-            elif ALGORITHM == 'AdaG':  # beta = 0.999 consensus = 0.002 (0.1)
+            # elif ALGORITHM == 'AdaG':  # beta = 0.999 consensus = 0.002 (0.1)
+            #     if iter_num == 0:
+            #         print('Algorithm AdaG applied')
+            #     Algorithm.AdaG_SGD(iter_num=iter_num+1, beta=0.999, consensus=CONSENSUS_STEP, epsilon=1e-8)
+            # elif ALGORITHM == 'QSADDLe':
+            #     if iter_num == 0:
+            #         print('Algorithm QSADDLe applied')
+            #     Algorithm.Comp_QSADDLe(iter_num=iter_num, rho=0.01, beta=0.9, learning_rate=LEARNING_RATE, consensus=CONSENSUS_STEP, mu=0.9)
+            elif ALGORITHM == 'BEER':  # 1
                 if iter_num == 0:
-                    print('3', CONSENSUS_STEP)
-                Algorithm.AdaG_SGD(iter_num=iter_num+1, beta=0.999, consensus=CONSENSUS_STEP, epsilon=1e-8)
-            elif ALGORITHM == 'QSADDLe':
+                    print('Algorithm BEER applied')
+                Algorithm.BEER(iter_num=iter_num, gamma=DISCOUNT, learning_rate=LEARNING_RATE)
+            elif ALGORITHM == 'DeCoM':  # MNIST work, fashionMNIST not work
                 if iter_num == 0:
-                    print('4', CONSENSUS_STEP)
-                Algorithm.Comp_QSADDLe(iter_num=iter_num, rho=0.01, beta=0.9, learning_rate=LEARNING_RATE, consensus=CONSENSUS_STEP, mu=0.9)
+                    print('Algorithm DeCoM applied')
+                Algorithm.DeCoM(iter_num=iter_num, gamma=DISCOUNT, beta=BETA, learning_rate=LEARNING_RATE)  # gamma = 0.2, beta = 0.05
+            elif ALGORITHM == 'CEDAS':  # 1  (Very interesting, It is possible to improve DEFD according to this algorithm)
+                if iter_num == 0:
+                    print('Algorithm CEDAS applied')
+                Algorithm.CEDAS(iter_num=iter_num, gamma=DISCOUNT, alpha=BETA)  # gamma = 0.2 , alpha = 0.05
+            elif ALGORITHM == 'MOTEF':  # 1
+                if iter_num == 0:
+                    print('Algorithm MOTEF applied')
+                Algorithm.MoTEF(iter_num=iter_num, gamma=DISCOUNT, learning_rate=LEARNING_RATE, Lambda=BETA)  # 0.05 / 0.01 / 0.1 # gamma = 0.2 , Lambda = 0.05
+            elif ALGORITHM == 'MOTEF_VR':  # 0
+                if iter_num == 0:
+                    print('Algorithm MOTEF_VR applied')
+                Algorithm.MOTEF_VR(iter_num=iter_num, gamma=DISCOUNT, learning_rate=LEARNING_RATE, Lambda=BETA)
             else:
                 raise Exception('Unknown algorithm, please update the algorithm codes')
 
@@ -177,31 +276,43 @@ if __name__ == '__main__':
             Test_acc.append(test_acc)
             print('SEED |', seed, '| iteration |', iter_num, '| Global Loss', train_loss, '| Training Accuracy |',
                   train_acc, '| Test Accuracy |', test_acc, '\n')
+            # print(iter_num, [client_compressor[i].discount_parameter for i in range(CLIENTS)], '\n')
 
             if iter_num >= AGGREGATION:
                 ACC += Test_acc
                 LOSS += global_loss
+                ALPHAS += Algorithm.error_mag
+                MAXES += Algorithm.error_ratio
+                # print([Algorithm.change_iter_num for i in range(CLIENTS)])
+                print([client_compressor[i].discount_parameter for i in range(CLIENTS)])
                 break
         del Models
         del client_weights
 
         torch.cuda.empty_cache()  # Clean the memory cache
 
+    # plt.plot(range(len(Algorithm.Alpha)), Algorithm.Alpha, label='{}'.format(DISCOUNT))
+    # plt.legend()
+    # plt.show()
+
     if STORE == 1:
         if FIRST is True:
             Maxes = []
             Mines = []
             for i in range(CLIENTS):
+                # print(i, client_compressor[i].max, client_compressor[i].min)
                 Maxes.append(max(client_compressor[i].max))
                 Mines.append(min(client_compressor[i].min))
             txt_list = [Maxes, '\n', Mines, '\n', ACC, '\n', LOSS]
         else:
             txt_list = [ACC, '\n', LOSS]
+            # txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
+            # txt_list = [ACC, '\n', LOSS, '\n', ALPHAS, '\n', MAXES]
 
         if COMPRESSION == 'quantization':
-            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, CONTROL, dataset, LEARNING_RATE, CONSENSUS_STEP, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, ADAPTIVE, dataset, LEARNING_RATE, CONSENSUS_STEP, THRESHOLD, CLIENTS, NEIGHBORS, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         elif COMPRESSION == 'topk':
-            f = open('{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, CONTROL, dataset, LEARNING_RATE, CONSENSUS_STEP, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
+            f = open('{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, ADAPTIVE, dataset, LEARNING_RATE, CONSENSUS_STEP, THRESHOLD, CLIENTS, NEIGHBORS, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         else:
             raise Exception('Unknown compression method')
 
@@ -209,3 +320,8 @@ if __name__ == '__main__':
             f.write("%s\n" % item)
     else:
         print('NOT STORE THE RESULTS THIS TIME')
+
+    # whole length of weights (top-k): 39760
+
+    # for repeat_time in range(1):
+    #     os.system('say "Mission Complete."')
