@@ -27,6 +27,9 @@ class Model:
         if model_name == 'FashionMNIST':
             from model.MNISTModel import MNISTModel
             self.model = MNISTModel().to(device)
+        elif model_name == 'MNIST':
+            from model.MNISTModel import MNISTModel
+            self.model = MNISTModel().to(device)
         elif model_name == 'CIFAR10Model':
             from model.CIFAR10Model import CIFAR10Model, ResNet18, Net, ModelCNNCifar10
             # self.model = CIFAR10Model().to(device)
