@@ -346,6 +346,7 @@ class Algorithms:
 
         for n in range(self.num_clients):
             if iter_num == 0:
+                images, labels = next(iter(self.data_loaders[n]))
                 training_weights = self._training(data_loader=[images, labels], client_weights=self.client_weights[n], model=self.models[n])
                 initial_gradients = (self.client_weights[n] - training_weights) / learning_rate
                 # initial_gradients = self.client_weights[n] - training_weights
