@@ -32,7 +32,10 @@ parse.add_argument('-dist', type=str, default='Dirichlet', help='Data Distributi
 parse.add_argument('-alpha', type=float, default=0.0, help='Alpha value for Dirichlet Distribution')
 
 parse.add_argument('-consensus', type=float, default=0.05, help='Consensus step for CHOCO')
-parse.add_argument('-dc', type=float, default=1.0, help='Discount parameter of residual error for biased estimator')
+parse.add_argument('-gamma', type=float, default=1.0, help='Discount parameter of residual error for biased estimator')
+parse.add_argument('-adaptive', type=bool, default=False, help='Apply the adaptive process on gamma')
+parse.add_argument('-threshold', type=float, default=1, help='Adapt threshold')
+parse.add_argument('-beta', type=float, default=0.9, help='momentum parameter')
 
 parse.add_argument('-algorithm', type=str, default='EFD', help='machine learning algorithm')
 parse.add_argument('-control', type=int, default=0, help='Apply control algorithm or not, 0 is not, 1 is true')
@@ -63,9 +66,15 @@ dataset_path = os.path.join(os.path.dirname(__file__), 'data')
 if args.data == 'fashion':
     model_name = 'FashionMNIST'
     dataset = 'FashionMNIST'
+elif args.data == 'MNIST':
+    model_name = 'MNIST'
+    dataset = 'MNIST'
 elif args.data == 'CIFAR10':
     model_name = 'CIFAR10Model'
     dataset = 'CIFAR10'
+elif args.data == 'CINIC10':
+    model_name = 'CIFAR10Model'
+    dataset = 'CINIC10'
 else:
     raise Exception('Unknown dataset, need to update')
 
@@ -97,9 +106,19 @@ DISTRIBUTION = args.dist
 ALGORITHM = args.algorithm
 COMPRESSION = args.compression
 NETWORK = args.network
-DISCOUNT = args.dc
+DISCOUNT = args.gamma
 STORE = args.store
 FIRST = args.first_time
+ADAPTIVE = args.adaptive
+THRESHOLD = args.threshold
+
+BETA = args.beta
+
+# if COMPRESSION == 'topk':
+#     ADAPTIVE = True
+# elif COMPRESSION == 'quantization':
+#     ADAPTIVE = False
+
 
 if args.control == 0:
     CONTROL = False
@@ -110,14 +129,14 @@ else:
 
 LEARNING_RATE = args.lr
 
-Learning_rate_FMIST_book = {0.1: {0: 0.1, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.1, 0.5: 0.1,
-                            0.6: 0.1, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
-                      0.2: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
-                            0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
-                      4: {0: 0.032, 0.1: 0.032, 0.2: 0.018, 0.3: 0.032, 0.4: 0.032, 0.5: 0.178,
-                            0.6: 0.056, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
-                      8: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
-                            0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056}}
+# Learning_rate_FMIST_book = {0.1: {0: 0.1, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.1, 0.5: 0.1,
+#                             0.6: 0.1, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+#                       0.2: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
+#                             0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+#                       4: {0: 0.032, 0.1: 0.032, 0.2: 0.018, 0.3: 0.032, 0.4: 0.032, 0.5: 0.178,
+#                             0.6: 0.056, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+#                       8: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
+#                             0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056}}
 
 # if dataset == 'FashionMNIST':
 #     if COMPRESSION == 'topk':
