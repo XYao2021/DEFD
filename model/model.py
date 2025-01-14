@@ -31,10 +31,10 @@ class Model:
             from model.MNISTModel import MNISTModel
             self.model = MNISTModel().to(device)
         elif model_name == 'CIFAR10Model':
-            from model.CIFAR10Model import CIFAR10Model, ResNet18, Net, ModelCNNCifar10
-            # self.model = CIFAR10Model().to(device)
+            from model.CIFAR10Model import CIFAR10Model
+            self.model = CIFAR10Model().to(device)
             # self.model = ResNet18().to(device)
-            self.model = ModelCNNCifar10().to(device)
+            # self.model = ModelCNNCifar10().to(device)
 
         if pretrained_model_file is not None:
             self.model.load_state_dict(torch.load(pretrained_model_file, map_location=device))
