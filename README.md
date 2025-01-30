@@ -1,5 +1,5 @@
 # DEFD Codes
-The official Pytorch code for DEFD-SGD algorithm. These codes only use for experiments in paper "Compressed Decentralized Learning With Error Feedback Under Data Heterogeneity" for ICLR 2025.
+The official Pytorch code for Discounted Error Feedback Decentralized Parallel Stochastic Gradeinet Descent (DEFD) algorithm. These codes only use for experiments in paper "Compressed Decentralized Learning With Error Feedback Under Data Heterogeneity" for ICML 2025.
 
 # Python Libraries
 The required libraries can be found in "requirements.txt"
