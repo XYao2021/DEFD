@@ -94,6 +94,7 @@ class Sampling:
             sample = np.array(sample) * len(self.dataset[0])
             num_samples.append([int(round(i, 0)) for i in sample])
         Sample_data = [[] for i in range(self.num_client)]
+        print(num_samples)
         for client in range(self.num_client):
             for i in range(self.num_class):
                 class_samples = num_samples[client][i]
