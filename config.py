@@ -51,11 +51,6 @@ args = parse.parse_args()
 print(', '.join(f'{k}={v}' for k, v in vars(args).items()))
 
 CUDA_ID = args.id
-average_comm_cost = args.avg_comm
-average_comp_cost = args.avg_comp
-V = args.V  # Lyapunov V value
-W = args.W  # Lyapunov initial queue length W
-# LEARNING_RATE = args.lr
 
 RATIO = args.ratio
 CONSENSUS_STEP = args.consensus
@@ -114,12 +109,6 @@ THRESHOLD = args.threshold
 
 BETA = args.beta
 
-# if COMPRESSION == 'topk':
-#     ADAPTIVE = True
-# elif COMPRESSION == 'quantization':
-#     ADAPTIVE = False
-
-
 if args.control == 0:
     CONTROL = False
 elif args.control == 1:
@@ -128,20 +117,3 @@ else:
     raise Exception('Unknown control parameter')
 
 LEARNING_RATE = args.lr
-
-# Learning_rate_FMIST_book = {0.1: {0: 0.1, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.1, 0.5: 0.1,
-#                             0.6: 0.1, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
-#                       0.2: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
-#                             0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
-#                       4: {0: 0.032, 0.1: 0.032, 0.2: 0.018, 0.3: 0.032, 0.4: 0.032, 0.5: 0.178,
-#                             0.6: 0.056, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
-#                       8: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
-#                             0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056}}
-
-# if dataset == 'FashionMNIST':
-#     if COMPRESSION == 'topk':
-#         LEARNING_RATE = Learning_rate_FMIST_book[RATIO][DISCOUNT]
-#     elif COMPRESSION == 'quantization':
-#         LEARNING_RATE = Learning_rate_FMIST_book[QUANTIZE_LEVEL][DISCOUNT]
-
-# print('LEARNING_RATE: ', LEARNING_RATE)
