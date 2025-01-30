@@ -164,13 +164,15 @@ class Transform:
         return Update_Avg
 
     def Get_alpha_upper_bound_theory(self):
-        eigenvalues = np.linalg.eigvals(self.matrix)
+        eigenvalues = np.linalg.eigvals(self.factor * self.matrix)
+        # print(eigenvalues)
         eigenvalues = np.sort(eigenvalues, axis=-1)[::-1]
+        # print(eigenvalues)
 
         rho = eigenvalues[1]
         eigenvalues = 1 - eigenvalues[1:]
         mu = np.max(eigenvalues)
         alpha_max = ((1 - rho) ** 2) / (6 * (mu ** 2))
-        return alpha_max
+        return alpha_max, rho
 
 
