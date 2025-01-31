@@ -29,7 +29,7 @@ class Compression(abc.ABC):
         return w_tmp, w_tmp_residual
 
     def _get_trans_indices(self, iter, w_tmp, channel_quality):
-        raise NotImplementedError()  #TODO: What does this mean?
+        raise NotImplementedError() 
 
 class Compression_1(abc.ABC):
     def __init__(self, node):
@@ -51,7 +51,7 @@ class Compression_1(abc.ABC):
         return w_tmp, w_tmp_residual
 
     def _get_trans_indices(self, iter, w_tmp, neighbors):
-        raise NotImplementedError()  #TODO: What does this mean?
+        raise NotImplementedError() 
 
 class Compression_Q(abc.ABC):
     def __init__(self, node):
@@ -68,8 +68,7 @@ class Compression_Q(abc.ABC):
         return quantize_value, residual_value
 
     def _get_trans_indices(self, iter, w_tmp, neighbors):
-        raise NotImplementedError()  #TODO: What does this mean?
-
+        raise NotImplementedError() 
 # "Chose Different Compression Method"
 
 class Top_k(abc.ABC):
