@@ -102,6 +102,7 @@ class Algorithms:
         self.adaptive = adaptive
         self.threshold = threshold
         self.org_gamma = self.client_compressor[0].discount_parameter
+        self.old_error = [torch.zeros_like(self.client_weights[n]) for n in range(self.num_clients)]
 
         "Testing parameter"
         self.Alpha = []
@@ -206,7 +207,11 @@ class Algorithms:
                 Vector_update = self._training(data_loader=[images, labels],
                                                client_weights=self.client_weights[n], model=self.models[n])
                 Vector_update -= self.client_weights[n]  # gradient
+                gradient = Vector_update
                 gradient_norm = torch.sum(torch.square(Vector_update)).item()
+                gradient_and_error_norm = torch.sum(torch.square(Vector_update + self.client_residuals[n])).item()
+                pure_gradient_norm = torch.sum(torch.square(Vector_update / learning_rate)).item()
+                # gradient_and_derror_norm = torch.sum(torch.square(Vector_update + self.client_compressor[n].discount_parameter * self.client_residuals[n])).item()
                 Vector_update += Averaged_weights[n]
 
             Vector_update -= self.client_weights[n]  # Difference between averaged weights and local weights
@@ -224,41 +229,58 @@ class Algorithms:
             gradient_plus_average_model_error_norm = gradient_plus_average_model_norm / error_norm
             gradient_plus_average_model_discounted_error_norm = gradient_plus_average_model_norm / discounted_error_norm
             bt_norm = torch.sum(torch.square(Vector_update + self.client_compressor[n].discount_parameter * self.client_residuals[n])).item()
+            direct_norm = torch.sum(torch.square(Vector_update + self.client_residuals[n])).item()
+            # old_error_norm = torch.sum(torch.square(self.old_error[n])).item()
+            # discounted_old_error_norm = (self.client_compressor[n].discount_parameter**2) * old_error_norm
 
+            difference_error_norm = torch.sum(torch.square(self.client_residuals[n] - self.old_error[n])).item()
+            difference_derror_norm = torch.sum(torch.square(self.client_residuals[n] - (self.client_compressor[n].discount_parameter**2) * self.old_error[n])).item()
+
+            if iter_num == 0 or 1:
+                coefficient = 1
+            else:
+                # coefficient = np.sqrt(old_error_norm / error_norm)
+                coefficient = np.sqrt(discounted_old_error_norm / error_norm)
+
+            # print('iteration: ', iter_num, 'client: ', n, 'difference norm: ', difference_error_norm, 'error norm: ', error_norm,
+            #       'discounted error norm:', discounted_error_norm, 'gradient norm:', gradient_norm, 'whole update norm:', gradient_plus_average_model_norm)
+            # print(iter_num, n, gradient_norm / discounted_error_norm)
+            self.old_error[n] = self.client_residuals[n]
             "Pre-adjustment"
             if self.adaptive is True:
-                # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / error_norm), 1)  # works well for topk
-                self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / error_norm), 1)  # works well for quantization
+                self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / (normalization * discounted_error_norm)), 1)  # works well for topk
+                # self.client_compressor[n].discount_parameter = min(np.sqrt(discounted_old_error_norm / error_norm), 1)  # works well for topk
+                # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / (normalization * error_norm)), 1)  # works well for quantization
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / discounted_error_norm), 1)  # equals to first one
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / discounted_error_norm), 1)
             "Compression Operator"
             Vector_update, self.client_residuals[n] = self.client_compressor[n].get_trans_bits_and_residual(iter=iter_num, w_tmp=Vector_update, w_residual=self.client_residuals[n], device=self.device, neighbors=self.neighbors[n])
 
+            Update_norm = torch.sum(torch.square(Vector_update)).item()
             new_error_norm = torch.sum(torch.square(self.client_residuals[n])).item()
 
             if iter_num == 0:
                 new_to_old_error_ratio = 1
                 self.initial_error_norm = new_error_norm
             else:
-                new_to_old_error_ratio = error_norm / new_error_norm
-            # print(iter_num, n, error_norm)
-            # print(iter_num, n, np.sqrt(new_to_old_error_ratio), learning_rate*np.sqrt(new_to_old_error_ratio))
-            # print(iter_num, n, np.sqrt(1/new_error_norm), learning_rate * np.sqrt(1/new_error_norm))
-            new_error_to_bt = new_error_norm / bt_norm
-            error_to_bt = error_norm / bt_norm
+                new_to_old_error_ratio = discounted_error_norm / new_error_norm
+
+            # print(iter_num, n, pure_gradient_norm, discounted_error_norm, bt_norm, Update_norm, new_error_norm, new_to_old_error_ratio)
+            # new_error_to_bt = new_error_norm / bt_norm
+            # error_to_bt = error_norm / bt_norm
             gradient_to_error = gradient_norm / error_norm
             # print(iter_num, n, new_error_to_bt, error_to_bt)
             # print(iter_num, n, np.sqrt(gradient_to_error))
             alpha = 0.9
-            difference_error_norm = torch.sum(torch.square(self.client_residuals[n] - old_error)).item()
-            momentum_norm = alpha * error_norm + (1-alpha) * new_error_norm
+            # difference_error_norm = torch.sum(torch.square(self.client_residuals[n] - old_error)).item()
+            # momentum_norm = alpha * error_norm + (1-alpha) * new_error_norm
             # print(iter_num, n, new_error_norm, np.sqrt(new_error_norm))
             # print(iter_num, n, momentum_norm, np.sqrt(momentum_norm))
             # print(iter_num, n, difference_error_norm, np.sqrt(difference_error_norm))
             # print(iter_num, n, momentum_norm / new_error_norm, np.sqrt(momentum_norm / new_error_norm), np.sqrt(difference_error_norm / new_error_norm))
 
-            error_ratio_i.append(error_to_bt)
-            beta = new_error_norm / bt_norm
+            # error_ratio_i.append(error_to_bt)
+            # beta = new_error_norm / bt_norm
 
             # sigma = 0.11
             # a = np.sqrt(n)
@@ -276,6 +298,7 @@ class Algorithms:
             sigma = 1 / np.sqrt(learning_rate)
             # sigma = np.sqrt(self.num_clients)
             # if self.adaptive is True:
+            #     self.client_compressor[n].discount_parameter = min(np.sqrt(discounted_error_norm / new_error_norm), 1)
             #     if self.compression_method == 'topk':
             #         self.client_compressor[n].discount_parameter = min(np.sqrt(discounted_error_norm / new_error_norm), 1)
             #     elif self.compression_method == 'quantization':
@@ -291,10 +314,10 @@ class Algorithms:
                     self.neighbor_models[m][self.neighbors[m].index(n)] += Vector_update
         # self.Alpha.append(sum(alpha)/len(alpha))  # error ratio
         # print(iter_num, alpha, '\n')
-        self.error_mag.append(sum(error_mag_i) / len(error_mag_i))
-        self.error_ratio.append(sum(error_ratio_i) / len(error_ratio_i))
+        # self.error_mag.append(sum(error_mag_i) / len(error_mag_i))
+        # self.error_ratio.append(sum(error_ratio_i) / len(error_ratio_i))
 
-        # print(iter_num, [self.client_compressor[n].discount_parameter for n in range(self.num_clients)])
+        print(iter_num, [self.client_compressor[n].discount_parameter for n in range(self.num_clients)], '\n')
 
     def DCD(self, iter_num):
         Averaged_weights = self._average_updates(updates=self.neighbor_models)
