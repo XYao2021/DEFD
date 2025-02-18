@@ -21,7 +21,7 @@ if device != 'cpu':
     current_device = torch.cuda.current_device()
     torch.cuda.set_device(current_device)
 
-device = 'cuda:{}'.format(CUDA_ID)
+# device = 'cuda:{}'.format(CUDA_ID)
 
 if __name__ == '__main__':
     ACC = []
@@ -76,18 +76,34 @@ if __name__ == '__main__':
         G = []
 
         if ALGORITHM == 'EFD':
+            #     # max_value = 0.2782602
+            #     # min_value = -0.2472423
+            # max_value = 0.5642
+            # min_value = -0.5123
+            # max_value = 0.3015
+            # min_value = -0.3220
             max_value = 0.4066
             min_value = -0.2881
         elif ALGORITHM == 'DCD':
+            # max_value = 0.35543507
+            # min_value = -0.30671167
+            # max_value = 0.2208
+            # min_value = -0.1937
             max_value = 0.4038
             min_value = -0.2891
         elif ALGORITHM == 'CHOCO':
             max_value = 0.30123514
             min_value = -0.21583036
         elif ALGORITHM == 'BEER':
+            # max_value = 0.30123514
+            # min_value = -0.21583036
             max_value = 3.6578
             min_value = -3.3810
+            # max_value = 2.7954
+            # min_value = -2.9491
         elif ALGORITHM == 'DeCoM':
+            # max_value = 4.7449
+            # min_value = -4.1620
             max_value = 2.2271
             min_value = -2.3342
         elif ALGORITHM == 'CEDAS':
@@ -96,6 +112,16 @@ if __name__ == '__main__':
         elif ALGORITHM == 'MOTEF':
             max_value = 1.9098
             min_value = -2.7054
+        # elif ALGORITHM == 'AdaG':
+        #     # max_value = 0.30123514
+        #     # min_value = -0.21583036
+        #     max_value = 0.5642
+        #     min_value = -0.5123
+        # elif ALGORITHM == 'QSADDLe':
+        #     max_value = 0.30123514
+        #     min_value = -0.21583036
+
+        # print(min_value, max_value)
 
         Transfer = Transform(num_nodes=CLIENTS, num_neighbors=NEIGHBORS, seed=seed, network=NETWORK)
         check = Check_Matrix(CLIENTS, Transfer.matrix)
@@ -123,10 +149,13 @@ if __name__ == '__main__':
             if COMPRESSION == 'quantization':
                 if ALGORITHM == 'EFD':
                     if ADAPTIVE:
-                        DISCOUNT = np.sqrt(QUANTIZE_LEVEL)
+                        # DISCOUNT = np.sqrt(QUANTIZE_LEVEL)
                         scale = 2 ** QUANTIZE_LEVEL - 1
                         step = (max_value - min_value) / scale
                         normalization = step
+                        model_size = len(client_weights[n])
+                        print(step, step**2, model_size, step**2 * model_size, (step/2)**2 * model_size)
+                        normalization = (step)**2
                     else:
                         normalization = 1
                 if CONTROL is True:
@@ -140,12 +169,15 @@ if __name__ == '__main__':
                         # client_compressor.append(Quantization_U(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))  # Unbiased 1
                         # client_compressor.append(Quantization(num_bits=QUANTIZE_LEVEL, max_value=max_value, min_value=min_value, device=device, discount=DISCOUNT))  # Biased
             elif COMPRESSION == 'topk':
-                normalization = None
+                normalization = 1
                 if CONTROL is True:
                     client_compressor.append(Lyapunov_compression_T(node=n, avg_comm_cost=average_comm_cost, V=V, W=W))
                     client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
                 else:
                     client_compressor.append(Top_k(ratio=RATIO, device=device, discount=DISCOUNT))
+            elif COMPRESSION == 'randk':
+                normalization = 1
+                client_compressor.append(Rand_k(ratio=RATIO, device=device, discount=DISCOUNT))
             else:
                 raise Exception('Unknown compression method, please write the compression method first')
 
@@ -168,12 +200,23 @@ if __name__ == '__main__':
                 H.append(torch.zeros_like(model.get_weights()).to(device))
                 G.append(torch.zeros_like(model.get_weights()).to(device))
                 client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+            # if ALGORITHM == 'AdaG':
+            #     client_tmps.append(model.get_weights().to(device))
+            #     client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+            #     neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+            #     estimate_gossip_error.append(torch.zeros_like(model.get_weights()).to(device))
+            # if ALGORITHM == 'QSADDLe':
+            #     current_weights.append(model.get_weights().to(device))
+            #     client_tmps.append(model.get_weights().to(device))
+            #     client_accumulate.append(torch.zeros_like(model.get_weights()).to(device))
+            #     neighbors_accumulates.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
+            #     m_hat.append(torch.zeros_like(model.get_weights()).to(device))
             if ALGORITHM == 'BEER':
                 neighbor_H.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
                 neighbor_G.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
                 H.append(torch.zeros_like(model.get_weights()).to(device))
                 G.append(torch.zeros_like(model.get_weights()).to(device))
-
+        print(model.key_list, model.size_list, sum(model.size_list), len(model.size_list))
         Algorithm = Algorithms(name=ALGORITHM, iter_round=ROUND_ITER, device=device, data_transform=data_transform,
                                num_clients=CLIENTS, client_weights=client_weights, client_residuals=client_residual,
                                client_accumulates=client_accumulate, client_compressors=client_compressor,
@@ -202,6 +245,14 @@ if __name__ == '__main__':
                 if iter_num == 0:
                     print('Algorithm CHOCO applied')
                 Algorithm.CHOCO(iter_num=iter_num, consensus=CONSENSUS_STEP)
+            # elif ALGORITHM == 'AdaG':  # beta = 0.999 consensus = 0.002 (0.1)
+            #     if iter_num == 0:
+            #         print('Algorithm AdaG applied')
+            #     Algorithm.AdaG_SGD(iter_num=iter_num+1, beta=0.999, consensus=CONSENSUS_STEP, epsilon=1e-8)
+            # elif ALGORITHM == 'QSADDLe':
+            #     if iter_num == 0:
+            #         print('Algorithm QSADDLe applied')
+            #     Algorithm.Comp_QSADDLe(iter_num=iter_num, rho=0.01, beta=0.9, learning_rate=LEARNING_RATE, consensus=CONSENSUS_STEP, mu=0.9)
             elif ALGORITHM == 'BEER':  # 1
                 if iter_num == 0:
                     print('Algorithm BEER applied')
@@ -224,6 +275,17 @@ if __name__ == '__main__':
                 Algorithm.MOTEF_VR(iter_num=iter_num, gamma=DISCOUNT, learning_rate=LEARNING_RATE, Lambda=BETA)
             else:
                 raise Exception('Unknown algorithm, please update the algorithm codes')
+
+            # gradient_variances = []
+            # for model in Models:
+            #     grads = [param.grad.view(-1) for param in model.model.parameters() if param.grad is not None]
+            #     # print(grads, len(grads))
+            #     all_grads = torch.cat(grads)
+            #     # print(all_grads, len(all_grads))
+            #     gradient_variance = torch.var(all_grads)
+            #     gradient_variances.append(gradient_variance)
+            #     # print(gradient_variance, np.sqrt(gradient_variance))
+            # print(iter_num, 'sigma_max: ', np.sqrt(max(gradient_variances)))
 
             iter_num += 1
             # for i in range(CLIENTS):
@@ -252,6 +314,10 @@ if __name__ == '__main__':
 
         torch.cuda.empty_cache()  # Clean the memory cache
 
+    # plt.plot(range(len(Algorithm.Alpha)), Algorithm.Alpha, label='{}'.format(DISCOUNT))
+    # plt.legend()
+    # plt.show()
+
     if STORE == 1:
         if FIRST is True:
             Maxes = []
@@ -268,7 +334,7 @@ if __name__ == '__main__':
 
         if COMPRESSION == 'quantization':
             f = open('{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, QUANTIZE_LEVEL, DISCOUNT, ADAPTIVE, dataset, LEARNING_RATE, CONSENSUS_STEP, BETA, CLIENTS, NEIGHBORS, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
-        elif COMPRESSION == 'topk':
+        elif COMPRESSION == 'topk' or 'randk':
             f = open('{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, ALPHA, RATIO, DISCOUNT, ADAPTIVE, dataset, LEARNING_RATE, CONSENSUS_STEP, BETA, CLIENTS, NEIGHBORS, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         else:
             raise Exception('Unknown compression method')
@@ -277,3 +343,8 @@ if __name__ == '__main__':
             f.write("%s\n" % item)
     else:
         print('NOT STORE THE RESULTS THIS TIME')
+
+    # whole length of weights (top-k): 39760
+
+    # for repeat_time in range(1):
+    #     os.system('say "Mission Complete."')
