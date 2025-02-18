@@ -31,10 +31,9 @@ class Model:
             from model.MNISTModel import MNISTModel
             self.model = MNISTModel().to(device)
         elif model_name == 'CIFAR10Model':
-            from model.CIFAR10Model import CIFAR10Model, ResNet18, Net, ModelCNNCifar10
+            from model.CIFAR10Model import CIFAR10Model, ResNet18
             # self.model = CIFAR10Model().to(device)
-            # self.model = ResNet18().to(device)
-            self.model = ModelCNNCifar10().to(device)
+            self.model = ResNet18().to(device)
 
         if pretrained_model_file is not None:
             self.model.load_state_dict(torch.load(pretrained_model_file, map_location=device))
@@ -47,6 +46,8 @@ class Model:
     def _get_weight_info(self):
         weights = self.model.state_dict()
         for key, weight in weights.items():
+            # if key.split('.')[-1] == 'weight' or key.split('.')[-1] == 'bias'\
+            #         or key.split('.')[-1] == 'running_mean' or key.split('.')[-1] == 'running_var':
             if key.split('.')[-1] == 'weight' or key.split('.')[-1] == 'bias':
                 shape = list(weight.size())
                 self.key_list.append(key)
@@ -57,6 +58,7 @@ class Model:
         with torch.no_grad():
             if self.flatten_weight:
                 return torch.cat([param.reshape((-1,)) for param in self.model.parameters()])
+                # return torch.cat([param.reshape((-1,)) for param in self.model.state_dict().values()])
             else:
                 return copy.deepcopy(self.model.state_dict())
 
@@ -67,7 +69,10 @@ class Model:
             self.model.load_state_dict(weights)
 
     def assign_flatten_weights(self, weights):
-        weights_dict = collections.OrderedDict()
+        # weights_dict = collections.OrderedDict()
+        weights_dict = copy.deepcopy(self.model.state_dict())
+        # print(weights_dict)
+        # print(self.model.state_dict())
         # print(len(weights), sum(self.size_list), self.shape_list, self.size_list, self.key_list)
         new_weights = torch.split(weights, self.size_list)
         for i in range(len(self.shape_list)):
