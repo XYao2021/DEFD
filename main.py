@@ -35,6 +35,7 @@ if __name__ == '__main__':
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
+        "other dataset: EMNIST / KMNIST / SVHN"
         if dataset == 'CINIC10':
             train_data, test_data = loading_CINIC(data_path=dataset_path, device=device)
             train_loader = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
@@ -154,8 +155,8 @@ if __name__ == '__main__':
                         step = (max_value - min_value) / scale
                         normalization = step
                         model_size = len(client_weights[n])
-                        print(step, step**2, model_size, step**2 * model_size, (step/2)**2 * model_size)
-                        normalization = (step)**2
+                        print(step, step**2, (step/2)**2, model_size, step**2 * model_size, (step/2)**2 * model_size)
+                        normalization = (step/2)**2
                     else:
                         normalization = 1
                 if CONTROL is True:
