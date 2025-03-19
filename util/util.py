@@ -30,13 +30,14 @@ def split_data(sample, train_data):
     return data
 
 class Sampling:
-    def __init__(self, num_class, num_client, train_data, method, seed):
+    def __init__(self, num_class, num_client, train_data, method, seed, name):
         super().__init__()
         self.num_class = num_class
         self.num_client = num_client
         self.train_data = train_data
         self.method = method
         self.seed = seed
+        self.name = name
 
         self.partition = None
         self.set_length = int(len(self.train_data)/self.num_class)
@@ -53,12 +54,22 @@ class Sampling:
         elif self.method == 'random':  # TODO: Need to consider the relationship with BATCH_SIZE
             self.partition = np.random.random(self.num_client)
             self.partition /= np.sum(self.partition)
-        for i in range(self.num_class):
-            tmp_data = []
-            for j in range(len(self.train_data)):
-                if self.train_data.targets[j] == self.classes[i]:
-                    tmp_data.append(self.train_data[j])
-            self.dataset.append(tmp_data)
+        if self.name == 'SVHN':
+            for i in range(self.num_class):
+                tmp_data = []
+                for j in range(len(self.train_data)):
+                    if self.train_data.labels[j] == self.classes[i]:
+                        tmp_data.append(self.train_data[j])
+                self.dataset.append(tmp_data)
+                # print(i, len(self.dataset[i]))
+            # print(len(self.dataset), len(self.dataset[0]))
+        else:
+            for i in range(self.num_class):
+                tmp_data = []
+                for j in range(len(self.train_data)):
+                    if self.train_data.targets[j] == self.classes[i]:
+                        tmp_data.append(self.train_data[j])
+                self.dataset.append(tmp_data)
 
     def DL_sampling_single(self):
         np.random.seed(self.seed)
@@ -90,14 +101,20 @@ class Sampling:
         samples = np.random.dirichlet(Alpha, size=self.num_client)
         # Print the generated samples
         num_samples = []
-        for sample in samples:
-            sample = np.array(sample) * len(self.dataset[0])
-            num_samples.append([int(round(i, 0)) for i in sample])
+        for i in range(self.num_client):
+            num_sample = []
+            for j in range(self.num_class):
+                sample = np.array(samples[i][j]) * len(self.dataset[j])
+                # num_samples.append([int(round(i, 0)) for i in sample])
+                num_sample.append(int(sample))
+            num_samples.append(num_sample)
+            # print(i, num_sample)
         Sample_data = [[] for i in range(self.num_client)]
-        print(num_samples)
+        # print(num_samples)
         for client in range(self.num_client):
             for i in range(self.num_class):
                 class_samples = num_samples[client][i]
+                # print(client, i, class_samples)
                 tmp_data = random.sample(self.dataset[i], k=class_samples)
                 # tmp_data_1 = random.sample(self.dataset[i], k=class_samples)
                 Sample_data[client] += tmp_data
