@@ -32,4 +32,3 @@ class MNISTModel(nn.Module):  # Improve the model V0 with nonlinear activation f
     def forward(self, x):
         x = self.layer_1(x)
         return self.layer_2(x)
-
