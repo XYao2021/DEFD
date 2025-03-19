@@ -3,7 +3,7 @@ import sys
 from torchvision.datasets import FashionMNIST, MNIST, EMNIST, QMNIST, KMNIST, SVHN
 from torchvision.datasets import CIFAR10, CIFAR100
 import torchvision.transforms as transforms
-from pytorch_cinic.dataset import CINIC10
+# from pytorch_cinic.dataset import CINIC10
 from PIL import Image
 import torch
 import torchvision
