@@ -204,6 +204,8 @@ class Algorithms:
                 pass
             else:
                 images, labels = next(iter(self.data_loaders[n]))
+                # print(images.shape)
+                # print(labels)
                 Vector_update = self._training(data_loader=[images, labels],
                                                client_weights=self.client_weights[n], model=self.models[n])
                 Vector_update -= self.client_weights[n]  # gradient
@@ -249,14 +251,15 @@ class Algorithms:
 
             # print('iteration: ', iter_num, 'client: ', n, 'difference norm: ', difference_error_norm, 'error norm: ', error_norm,
             #       'discounted error norm:', discounted_error_norm, 'gradient norm:', gradient_norm, 'whole update norm:', gradient_plus_average_model_norm)
-            # print(iter_num, n, gradient_norm / discounted_error_norm)
+            # print(iter_num, n, gradient_norm, error_norm)
             self.old_error[n] = self.client_residuals[n]
             self.client_residuals[n] = momentum_error
             "Pre-adjustment"
             if self.adaptive is True:
-                self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / (normalization * discounted_momentum_error_norm + epsilon)), 1)  # works well for topk
+                # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / (normalization * error_norm + epsilon)), 1)  # works well for topk
+                # self.client_compressor[n].discount_parameter = min(np.sqrt(learning_rate**2 / (normalization * error_norm + epsilon)), 1)  # works well for topk
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_and_error_norm / (normalization * discounted_error_norm)), 1)
-                # self.client_compressor[n].discount_parameter = min(np.sqrt(discounted_old_error_norm / error_norm), 1)  # works well for topk
+                self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_error_norm), 1)  # works well for topk
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / (normalization * momentum_error_norm + epsilon)), 1)  # works well for quantization
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / discounted_error_norm), 1)  # equals to first one
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / discounted_error_norm), 1)
@@ -322,7 +325,7 @@ class Algorithms:
         # self.error_mag.append(sum(error_mag_i) / len(error_mag_i))
         # self.error_ratio.append(sum(error_ratio_i) / len(error_ratio_i))
 
-        print(iter_num, [self.client_compressor[n].discount_parameter for n in range(self.num_clients)], '\n')
+        # print(iter_num, [self.client_compressor[n].discount_parameter for n in range(self.num_clients)], '\n')
 
     def DCD(self, iter_num):
         Averaged_weights = self._average_updates(updates=self.neighbor_models)
