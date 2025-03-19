@@ -29,7 +29,7 @@ parse.add_argument('-ns', type=int, default=4, help='Number of seeds for simulat
 parse.add_argument('-ratio', type=float, default=0.1, help='the ratio of non-zero elements that the baseline want to transfer')
 parse.add_argument('-quan', type=int, default=8, help='Quantization bits')
 parse.add_argument('-dist', type=str, default='Dirichlet', help='Data Distribution Method')
-parse.add_argument('-alpha', type=float, default=0.0, help='Alpha value for Dirichlet Distribution')
+parse.add_argument('-alpha', type=float, default=0.05, help='Alpha value for Dirichlet Distribution')
 
 parse.add_argument('-consensus', type=float, default=0.05, help='Consensus step for CHOCO')
 parse.add_argument('-gamma', type=float, default=1.0, help='Discount parameter of residual error for biased estimator')
@@ -51,6 +51,11 @@ args = parse.parse_args()
 print(', '.join(f'{k}={v}' for k, v in vars(args).items()))
 
 CUDA_ID = args.id
+average_comm_cost = args.avg_comm
+average_comp_cost = args.avg_comp
+V = args.V  # Lyapunov V value
+W = args.W  # Lyapunov initial queue length W
+# LEARNING_RATE = args.lr
 
 RATIO = args.ratio
 CONSENSUS_STEP = args.consensus
@@ -64,6 +69,20 @@ if args.data == 'fashion':
 elif args.data == 'MNIST':
     model_name = 'MNIST'
     dataset = 'MNIST'
+elif args.data == 'EMNIST':
+    model_name = 'EMNIST'
+    dataset = 'EMNIST'
+elif args.data == 'QMNIST':
+    model_name = 'QMNIST'
+    dataset = 'QMNIST'
+elif args.data == 'KMNIST':
+    model_name = 'KMNIST'
+    dataset = 'KMNIST'
+
+elif args.data == 'SVHN':
+    model_name = 'SVHN'
+    dataset = 'SVHN'
+
 elif args.data == 'CIFAR10':
     model_name = 'CIFAR10Model'
     dataset = 'CIFAR10'
@@ -109,6 +128,12 @@ THRESHOLD = args.threshold
 
 BETA = args.beta
 
+# if COMPRESSION == 'topk':
+#     ADAPTIVE = True
+# elif COMPRESSION == 'quantization':
+#     ADAPTIVE = False
+
+
 if args.control == 0:
     CONTROL = False
 elif args.control == 1:
@@ -117,3 +142,20 @@ else:
     raise Exception('Unknown control parameter')
 
 LEARNING_RATE = args.lr
+
+# Learning_rate_FMIST_book = {0.1: {0: 0.1, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.1, 0.5: 0.1,
+#                             0.6: 0.1, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+#                       0.2: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
+#                             0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+#                       4: {0: 0.032, 0.1: 0.032, 0.2: 0.018, 0.3: 0.032, 0.4: 0.032, 0.5: 0.178,
+#                             0.6: 0.056, 0.7: 0.1, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056},
+#                       8: {0: 0.056, 0.1: 0.056, 0.2: 0.056, 0.3: 0.056, 0.4: 0.056, 0.5: 0.056,
+#                             0.6: 0.056, 0.7: 0.056, 0.8: 0.056, 0.9: 0.056, 1.0: 0.056}}
+
+# if dataset == 'FashionMNIST':
+#     if COMPRESSION == 'topk':
+#         LEARNING_RATE = Learning_rate_FMIST_book[RATIO][DISCOUNT]
+#     elif COMPRESSION == 'quantization':
+#         LEARNING_RATE = Learning_rate_FMIST_book[QUANTIZE_LEVEL][DISCOUNT]
+
+# print('LEARNING_RATE: ', LEARNING_RATE)

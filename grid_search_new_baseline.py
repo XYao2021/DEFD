@@ -21,7 +21,7 @@ if device != 'cpu':
     current_device = torch.cuda.current_device()
     torch.cuda.set_device(current_device)
 
-device = 'cuda:{}'.format(CUDA_ID)
+# device = 'cuda:{}'.format(CUDA_ID)
 
 if __name__ == '__main__':
     ACC = []
@@ -30,29 +30,36 @@ if __name__ == '__main__':
     ALPHAS = []
     MAXES = []
 
+    # Learning_rates = [10 ** i for i in np.arange(-3, 0.0, 0.25)]
     Learning_rates = [0.001, 0.005, 0.01, 0.0316, 0.056, 0.1, 0.5, 1]
     if ALGORITHM == 'BEER':
         print('BEER')
+        # Learning_rates = [0.001, 0.005, 0.01, 0.0316, 0.056, 0.1, 0.5, 1]
         BETAS = [1]
         Gamma = [0.05, 0.1, 0.15, 0.2, 0.25, 0.3, 0.35, 0.4, 0.5]
     elif ALGORITHM == 'DeCoM':
         print('DeCoM')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [0.0001, 0.001, 0.01, 0.1, 0.5, 0.9]
         Gamma = [0.1, 0.2, 0.3, 0.4, 0.5, 0.9]
     elif ALGORITHM == 'CEDAS':
         print('CEDAS')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [0.005, 0.01, 0.05, 0.1, 0.2, 0.25]  # alpha
         Gamma = [0.1, 0.3, 0.5, 0.6, 0.7, 0.8, 0.9]  # gamma
     elif ALGORITHM == 'MOTEF':
         print('MOTEF')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [0.005, 0.01, 0.05, 0.1]  # Lambda
         Gamma = [0.1, 0.2, 0.5, 0.9]  # gamma
     elif ALGORITHM == 'MOTEF_VR':
         print('MOTEF_VR')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [0.005, 0.01, 0.05, 0.1]  # Lambda
         Gamma = [0.1, 0.2, 0.5, 0.9]  # gamma
     elif ALGORITHM == 'EFD':
         print('DEFD')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [1]  # Lambda
         if ADAPTIVE:
             Gamma = [1]
@@ -60,10 +67,12 @@ if __name__ == '__main__':
             Gamma = [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1]
     elif ALGORITHM == 'CHOCO':
         print('CHOCO')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [1]
         Gamma = [0.1, 0.2, 0.3, 0.4, 0.5, 0.7, 0.9]
     elif ALGORITHM == 'DCD':
         print('DCD')
+        # Learning_rates = [0.001, 0.01, 0.05]
         BETAS = [1]
         Gamma = [1]
 
@@ -97,15 +106,25 @@ if __name__ == '__main__':
             raise Exception('This data distribution method has not been embedded')
 
         if ALGORITHM == 'EFD':
+            #     # max_value = 0.2782602
+            #     # min_value = -0.2472423
+            # max_value = 0.5642
+            # min_value = -0.5123
             max_value = 0.4066
             min_value = -0.2881
         elif ALGORITHM == 'DCD':
+            # max_value = 0.35543507
+            # min_value = -0.30671167
+            # max_value = 0.2208
+            # min_value = -0.1937
             max_value = 0.4038
             min_value = -0.2891
         elif ALGORITHM == 'CHOCO':
             max_value = 0.30123514
             min_value = -0.21583036
         elif ALGORITHM == 'BEER':
+            # max_value = 0.30123514
+            # min_value = -0.21583036
             max_value = 3.6578
             min_value = -3.3810
         elif ALGORITHM == 'DeCoM':
@@ -169,14 +188,12 @@ if __name__ == '__main__':
 
                         if COMPRESSION == 'quantization':
                             if ALGORITHM == 'EFD':
-                                if ADAPTIVE:
-                                    DISCOUNT = np.sqrt(QUANTIZE_LEVEL)
-                                    scale = 2 ** QUANTIZE_LEVEL - 1
-                                    step = (max_value - min_value) / scale
-                                    vector_length = len(client_weights[n])
-                                    normalization = step
-                                else:
-                                    normalization = 1
+                                DISCOUNT = np.sqrt(QUANTIZE_LEVEL)
+                                scale = 2 ** QUANTIZE_LEVEL - 1
+                                step = (max_value - min_value) / scale
+                                vector_length = len(client_weights[n])
+                                # normalization = (step**2)*vector_length
+                                normalization = step
                             if CONTROL is True:
                                 client_compressor.append(Lyapunov_compression_Q(node=n, avg_comm_cost=average_comm_cost, V=V, W=W, max_value=max_value, min_value=min_value))
                                 client_partition.append(Lyapunov_Participation(node=n, average_comp_cost=average_comp_cost, V=V, W=W, seed=seed))
@@ -263,6 +280,11 @@ if __name__ == '__main__':
                             Algorithm.CHOCO(iter_num=iter_num, consensus=Gamma[cons])
                         elif ALGORITHM == 'DCD':
                             Algorithm.DCD(iter_num=iter_num)
+                        # elif ALGORITHM == 'AdaG':
+                        #     Algorithm.AdaG_SGD(iter_num=iter_num + 1, beta=0.9, consensus=Gamma[cons], epsilon=1e-8)
+                        # elif ALGORITHM == 'QSADDLe':
+                        #     Algorithm.Comp_QSADDLe(iter_num=iter_num, rho=0.01, beta=0.9,
+                        #                            learning_rate=Learning_rates[lr], consensus=Gamma[cons], mu=0.9)
                         elif ALGORITHM == 'BEER':
                             if iter_num == 0:
                                 print('Algorithm BEER applied')
@@ -290,12 +312,18 @@ if __name__ == '__main__':
                         train_loss, train_acc = test_model.accuracy(weights=test_weights, test_loader=train_loader, device=device)
                         test_loss, test_acc = test_model.accuracy(weights=test_weights, test_loader=test_loader, device=device)
 
+                        # global_loss.append(train_loss)
+                        # Test_acc.append(test_acc)
                         lr_dc.append(train_loss)
                         print('SEED |', seed, '| iteration |', iter_num, '| Global Loss', train_loss, '| Training Accuracy |',
                               train_acc, '| Test Accuracy |', test_acc, '\n')
                         iter_num += 1
 
                         if iter_num >= AGGREGATION:
+                            # ACC += Test_acc
+                            # LOSS += global_loss
+                            # ALPHAS += Algorithm.Alpha
+                            # MAXES += Algorithm.max
                             lr_dcs.append(lr_dc)
                             break
                     del Models
@@ -328,6 +356,11 @@ if __name__ == '__main__':
 
     if STORE == 1:
         txt_list = [beta_loss, beta_lr, beta_cons, '\n', BEST_INDEX, BEST_LR, BEST_CONS]
+        # txt_list = [best_lr, best_gamma]
+    #     # txt_list = [ACC, '\n', LOSS]
+    #     # txt_list = [ACC, '\n', LOSS, '\n', ALPHAS]
+    #     txt_list = [LOSS_DCs, Learning_rates[loss_dc.index(min(loss_dc))]]
+    #     # txt_list = [ACC, '\n', LOSS, '\n', Algorithm.changes_ratio]
         if COMPRESSION == 'quantization':
             f = open('{}|{}|{}|{}|{}|.txt'.format(ALGORITHM, QUANTIZE_LEVEL, DISCOUNT, date.today(), time.strftime("%H:%M:%S", time.localtime())), 'w')
         elif COMPRESSION == 'topk':
@@ -339,3 +372,8 @@ if __name__ == '__main__':
             f.write("%s\n" % item)
     else:
         print('NOT STORE THE RESULTS THIS TIME')
+
+    # whole length of weights (top-k): 39760
+
+    # for repeat_time in range(1):
+    #     os.system('say "Mission Complete."')

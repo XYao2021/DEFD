@@ -21,7 +21,7 @@ if device != 'cpu':
     current_device = torch.cuda.current_device()
     torch.cuda.set_device(current_device)
 
-device = 'cuda:{}'.format(CUDA_ID)
+# device = 'cuda:{}'.format(CUDA_ID)
 
 if __name__ == '__main__':
     ACC = []
@@ -35,18 +35,26 @@ if __name__ == '__main__':
         torch.manual_seed(seed)
         torch.cuda.manual_seed(seed)
 
+        # model_name = "SVHN"
+        # dataset = "SVHN"
+
         "other dataset: EMNIST / KMNIST / SVHN"
         if dataset == 'CINIC10':
             train_data, test_data = loading_CINIC(data_path=dataset_path, device=device)
             train_loader = torch.utils.data.DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
             test_loader = torch.utils.data.DataLoader(test_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
-        elif dataset == 'FashionMNIST' or 'CIFAR10' or 'MNIST':
+        elif dataset == 'FashionMNIST' or 'CIFAR10' or 'MNIST' or 'EMNIST' or 'QMNIST' or 'KMNIST':
             train_data, test_data = loading(dataset_name=dataset, data_path=dataset_path, device=device)
             train_loader = DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
             test_loader = DataLoader(test_data, batch_size=BATCH_SIZE_TEST, shuffle=False, num_workers=0)
 
+        train_loader = DataLoader(train_data, batch_size=BATCH_SIZE_TEST, shuffle=True, num_workers=0)
+        test_loader = DataLoader(test_data, batch_size=BATCH_SIZE_TEST, shuffle=False, num_workers=0)
+
+        # print(train_data.labels)
+
         print("......DATA LOADING COMPLETE......")
-        Sample = Sampling(num_client=CLIENTS, num_class=len(train_data.classes), train_data=train_data, method='uniform', seed=seed)
+        Sample = Sampling(num_client=CLIENTS, num_class=10, train_data=train_data, method='uniform', seed=seed, name=dataset)
         if DISTRIBUTION == 'Dirichlet':
             if ALPHA == 0:
                 client_data = Sample.DL_sampling_single()
@@ -139,7 +147,10 @@ if __name__ == '__main__':
             model = Model(random_seed=seed, learning_rate=LEARNING_RATE, model_name=model_name, device=device, flatten_weight=True, pretrained_model_file=load_model_file)
             Models.append(model)
             client_weights.append(model.get_weights())
+
             client_train_loader.append(DataLoader(client_data[n], batch_size=BATCH_SIZE, shuffle=True))
+            # client_train_loader.append(train_loader)
+
             client_residual.append(torch.zeros_like(model.get_weights()).to(device))
             neighbor_models.append([model.get_weights() for i in range(len(Transfer.neighbors[n]))])
 
@@ -217,7 +228,7 @@ if __name__ == '__main__':
                 neighbor_G.append([torch.zeros_like(model.get_weights()).to(device) for i in range(len(Transfer.neighbors[n]))])
                 H.append(torch.zeros_like(model.get_weights()).to(device))
                 G.append(torch.zeros_like(model.get_weights()).to(device))
-        print(model.key_list, model.size_list, sum(model.size_list), len(model.size_list))
+        # print(model.key_list, model.size_list, sum(model.size_list), len(model.size_list))
         Algorithm = Algorithms(name=ALGORITHM, iter_round=ROUND_ITER, device=device, data_transform=data_transform,
                                num_clients=CLIENTS, client_weights=client_weights, client_residuals=client_residual,
                                client_accumulates=client_accumulate, client_compressors=client_compressor,
