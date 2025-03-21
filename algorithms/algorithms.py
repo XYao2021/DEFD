@@ -234,7 +234,7 @@ class Algorithms:
             direct_norm = torch.sum(torch.square(Vector_update + self.client_residuals[n])).item()
             # old_error_norm = torch.sum(torch.square(self.old_error[n])).item()
             # discounted_old_error_norm = (self.client_compressor[n].discount_parameter**2) * old_error_norm
-            beta = 0.9
+            beta = 0.05
             epsilon = 0.000000000001  # noise: make sure not divide or multiple with zero.
 
             momentum_error = beta * self.client_residuals[n] + (1 - beta) * self.old_error[n]
@@ -252,16 +252,16 @@ class Algorithms:
             # print('iteration: ', iter_num, 'client: ', n, 'difference norm: ', difference_error_norm, 'error norm: ', error_norm,
             #       'discounted error norm:', discounted_error_norm, 'gradient norm:', gradient_norm, 'whole update norm:', gradient_plus_average_model_norm)
             # print(iter_num, n, gradient_norm, error_norm)
-            self.old_error[n] = self.client_residuals[n]
-            self.client_residuals[n] = momentum_error
+            # self.old_error[n] = self.client_residuals[n]
+            # self.client_residuals[n] = momentum_error
             "Pre-adjustment"
             if self.adaptive is True:
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / (normalization * error_norm + epsilon)), 1)  # works well for topk
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(learning_rate**2 / (normalization * error_norm + epsilon)), 1)  # works well for topk
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_and_error_norm / (normalization * discounted_error_norm)), 1)
-                self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_error_norm), 1)  # works well for topk
+                # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_error_norm), 1)  # works well for topk
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / (normalization * momentum_error_norm + epsilon)), 1)  # works well for quantization
-                # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / discounted_error_norm), 1)  # equals to first one
+                self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_norm / (normalization * discounted_error_norm)), 1)  # equals to first one
                 # self.client_compressor[n].discount_parameter = min(np.sqrt(gradient_plus_average_model_norm / discounted_error_norm), 1)
             "Compression Operator"
             Vector_update, self.client_residuals[n] = self.client_compressor[n].get_trans_bits_and_residual(iter=iter_num, w_tmp=Vector_update, w_residual=self.client_residuals[n], device=self.device, neighbors=self.neighbors[n])
